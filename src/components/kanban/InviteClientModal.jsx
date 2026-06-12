@@ -16,7 +16,8 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
 
   useEffect(() => {
     if (preselectedWorkflow) return
-    getDocs(query(collection(db, 'workflows'), where('userId', '==', user.uid)))
+    const orgId = user.profile?.orgId || user.uid
+    getDocs(query(collection(db, 'workflows'), where('userId', '==', orgId)))
       .then(snap => setWorkflows(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [])
 
@@ -27,10 +28,12 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
     try {
       const workflow = workflows.find(w => w.id === form.workflowId)
       const ref = doc(collection(db, 'executions'))
+      const orgId = user.profile?.orgId || user.uid
       await setDoc(ref, {
         ...form,
         workflowName: workflow?.name || '',
         userId: user.uid,
+        orgId,
         status: 'invited',
         currentNodeIndex: 0,
         completedNodes: 0,

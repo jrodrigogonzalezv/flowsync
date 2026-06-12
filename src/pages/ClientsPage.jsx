@@ -14,7 +14,8 @@ export default function ClientsPage() {
   const [selectedExec, setSelectedExec] = useState(null)
 
   useEffect(() => {
-    const q = query(collection(db, 'executions'), where('userId', '==', user.uid))
+    const orgId = user.profile?.orgId || user.uid
+    const q = query(collection(db, 'executions'), where('orgId', '==', orgId))
     const unsub = onSnapshot(q, snap => {
       setExecutions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)

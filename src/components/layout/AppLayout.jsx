@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { LayoutDashboard, GitBranch, Users, Settings, LogOut, Menu, X, Zap } from 'lucide-react'
+import { LayoutDashboard, GitBranch, Users, Settings, LogOut, Menu, X, Zap, UsersRound, Shield } from 'lucide-react'
 
-const navItems = [
+const adminNav = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
   { icon: GitBranch,       label: 'Flujos',     to: '/workflows' },
   { icon: Users,           label: 'Clientes',   to: '/clients' },
-  { icon: Settings,        label: 'Config',     to: '/settings' },
+  { icon: UsersRound,      label: 'Equipo',     to: '/team' },
+]
+
+const supervisorNav = [
+  { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
+  { icon: Users,           label: 'Clientes',  to: '/clients' },
 ]
 
 export default function AppLayout({ children }) {
@@ -15,6 +20,9 @@ export default function AppLayout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const role = user?.profile?.role || 'supervisor'
+  const navItems = role === 'admin' ? adminNav : supervisorNav
 
   async function handleLogout() {
     await logout()
@@ -26,6 +34,10 @@ export default function AppLayout({ children }) {
     : <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-sm font-semibold text-white">
         {user?.displayName?.[0] || user?.email?.[0] || '?'}
       </div>
+
+  const roleBadge = role === 'admin'
+    ? <span className="hidden sm:flex items-center gap-1 text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-medium"><Shield className="w-3 h-3" /> Admin</span>
+    : <span className="hidden sm:flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">Supervisor</span>
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -46,9 +58,7 @@ export default function AppLayout({ children }) {
                   key={to}
                   to={to}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    active
-                      ? 'bg-blue-50 text-blue-800'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                    active ? 'bg-blue-50 text-blue-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -59,6 +69,7 @@ export default function AppLayout({ children }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            {roleBadge}
             <div className="hidden sm:flex items-center gap-2.5">
               {avatar}
               <span className="text-sm text-slate-700 font-medium max-w-[140px] truncate">

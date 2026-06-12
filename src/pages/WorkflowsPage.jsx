@@ -14,7 +14,8 @@ export default function WorkflowsPage() {
   const [inviteWorkflow, setInviteWorkflow] = useState(null)
 
   useEffect(() => {
-    const q = query(collection(db, 'workflows'), where('userId', '==', user.uid))
+    const orgId = user.profile?.orgId || user.uid
+    const q = query(collection(db, 'workflows'), where('userId', '==', orgId))
     const unsub = onSnapshot(q, snap => {
       setWorkflows(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)

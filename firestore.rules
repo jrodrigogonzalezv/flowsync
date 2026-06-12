@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isAuth() && userProfile().role == 'admin';
+    }
+    function sameOrg(orgId) {
+      return isAuth() && userProfile().orgId == orgId;
+    }
+
+    match /organizations/{orgId} {
+      allow read: if isAuth() && sameOrg(orgId);
+      allow create: if isAuth();
+      allow update: if isAdmin() && sameOrg(orgId);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuth() && (request.auth.uid == userId || sameOrg(resource.data.orgId));
+      allow create, update: if isAuth() && request.auth.uid == userId;
+    }
+
+    match /invites/{inviteId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    match /workflows/{workflowId} {
+      allow read: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        sameOrg(resource.data.orgId)
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin() && (
+        resource.data.userId == request.auth.uid || sameOrg(resource.data.orgId)
+      );
+      allow delete: if isAdmin() && resource.data.userId == request.auth.uid;
+    }
+
+    match /executions/{executionId} {
+      allow read: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        sameOrg(resource.data.orgId)
+      );
+      allow create: if isAuth();
+      // clients fill in flows without auth — execution ID is the access token
+      allow update: if true;
+      allow delete: if isAdmin() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
