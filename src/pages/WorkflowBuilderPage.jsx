@@ -4,7 +4,8 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection } from 'fir
 import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import WorkflowBuilder from '../components/builder/WorkflowBuilder'
-import { ArrowLeft, Loader2, BookOpen, X, Save } from 'lucide-react'
+import KnowledgeBaseModal from '../components/kb/KnowledgeBaseModal'
+import { ArrowLeft, Loader2, BookOpen, Save } from 'lucide-react'
 
 export default function WorkflowBuilderPage() {
   const { id } = useParams()
@@ -13,6 +14,7 @@ export default function WorkflowBuilderPage() {
   const [workflow, setWorkflow] = useState(null)
   const [name, setName] = useState('Flujo sin nombre')
   const [knowledgeBase, setKnowledgeBase] = useState('')
+  const [kbFiles, setKbFiles] = useState([])
   const [showKB, setShowKB] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -20,6 +22,8 @@ export default function WorkflowBuilderPage() {
   const [saved, setSaved] = useState(false)
 
   const isNew = id === 'new'
+  const [tempWorkflowId] = useState(() => `draft_${Date.now()}`)
+  const workflowFolder = isNew ? tempWorkflowId : id
 
   useEffect(() => {
     if (isNew) { setLoading(false); return }
@@ -29,6 +33,7 @@ export default function WorkflowBuilderPage() {
         setWorkflow(data)
         setName(data.name || 'Flujo sin nombre')
         setKnowledgeBase(data.knowledgeBase || '')
+        setKbFiles(data.knowledgeBaseFiles || [])
       }
       setLoading(false)
     })
@@ -39,6 +44,7 @@ export default function WorkflowBuilderPage() {
     try {
       const payload = {
         name, knowledgeBase,
+        knowledgeBaseFiles: kbFiles,
         nodes: nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
         edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null })),
         userId: user.uid,
@@ -59,6 +65,8 @@ export default function WorkflowBuilderPage() {
       setSaving(false)
     }
   }
+
+  const hasKB = knowledgeBase.length > 0 || kbFiles.length > 0
 
   if (loading) return (
     <div className="h-full flex items-center justify-center bg-slate-50">
@@ -86,7 +94,14 @@ export default function WorkflowBuilderPage() {
         >
           <BookOpen className="w-4 h-4" />
           <span className="hidden sm:block">Base de conocimiento</span>
-          {knowledgeBase && <span className="w-2 h-2 bg-blue-800 rounded-full" />}
+          {hasKB && (
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-blue-800 rounded-full" />
+              {kbFiles.length > 0 && (
+                <span className="text-xs text-blue-800 font-semibold">{kbFiles.length}</span>
+              )}
+            </span>
+          )}
         </button>
       </div>
 
@@ -95,37 +110,16 @@ export default function WorkflowBuilderPage() {
       </div>
 
       {showKB && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl flex flex-col max-h-[80vh] shadow-xl">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <div>
-                <h3 className="text-slate-900 font-semibold">Base de conocimiento</h3>
-                <p className="text-slate-500 text-sm mt-0.5">La IA usará este texto para analizar las respuestas de tus clientes.</p>
-              </div>
-              <button onClick={() => setShowKB(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              <textarea
-                value={knowledgeBase}
-                onChange={e => setKnowledgeBase(e.target.value)}
-                rows={14}
-                className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 resize-none font-mono leading-relaxed placeholder-slate-400"
-                placeholder="Pega aquí tu base de conocimiento: criterios de evaluación, requisitos, preguntas frecuentes, políticas, etc."
-              />
-              <p className="text-slate-400 text-xs mt-2">{knowledgeBase.length} caracteres</p>
-            </div>
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
-              <button onClick={() => setShowKB(false)} className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors font-medium">
-                Cancelar
-              </button>
-              <button onClick={() => setShowKB(false)} className="px-5 py-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium rounded-xl transition-colors">
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
+        <KnowledgeBaseModal
+          knowledgeBase={knowledgeBase}
+          onChangeKnowledgeBase={setKnowledgeBase}
+          kbFiles={kbFiles}
+          onAddFile={f => setKbFiles(prev => [...prev, f])}
+          onDeleteFile={fid => setKbFiles(prev => prev.filter(f => f.id !== fid))}
+          userId={user.uid}
+          workflowFolder={workflowFolder}
+          onClose={() => setShowKB(false)}
+        />
       )}
     </div>
   )

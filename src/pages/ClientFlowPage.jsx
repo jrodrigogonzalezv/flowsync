@@ -64,7 +64,10 @@ export default function ClientFlowPage() {
         const result = await analyzeFlow({
           responses: execution.responses || {},
           aiPrompt: currentStep.data.aiPrompt || 'Analiza las respuestas del cliente.',
-          knowledgeBase: workflow.knowledgeBase || '',
+          knowledgeBase: [
+            workflow.knowledgeBase || '',
+            ...(workflow.knowledgeBaseFiles || []).map(f => f.extractedText || ''),
+          ].filter(Boolean).join('\n\n---\n\n'),
         })
         setAiResult(result.data.result)
         setAiPhase('result')

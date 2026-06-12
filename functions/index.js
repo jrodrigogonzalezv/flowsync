@@ -2,6 +2,9 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { defineSecret } = require('firebase-functions/params')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const nodemailer = require('nodemailer')
+const admin = require('firebase-admin')
+
+if (!admin.apps.length) admin.initializeApp()
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY')
 const gmailUser = defineSecret('GMAIL_USER')
@@ -37,6 +40,48 @@ exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
   return { result: text }
 })
 
+exports.extractKnowledgeBaseFile = onCall({ secrets: [geminiApiKey] }, async (request) => {
+  const { storagePath, fileType, mimeType } = request.data
+
+  if (!storagePath || !fileType) {
+    throw new HttpsError('invalid-argument', 'Faltan parámetros.')
+  }
+
+  const bucket = admin.storage().bucket()
+  const [buffer] = await bucket.file(storagePath).download()
+
+  let extractedText = ''
+
+  if (fileType === 'txt') {
+    extractedText = buffer.toString('utf-8')
+  } else if (fileType === 'pdf') {
+    const pdfParse = require('pdf-parse')
+    const data = await pdfParse(buffer)
+    extractedText = data.text
+  } else if (fileType === 'docx') {
+    const mammoth = require('mammoth')
+    const result = await mammoth.extractRawText({ buffer })
+    extractedText = result.value
+  } else if (fileType === 'image') {
+    const genAI = new GoogleGenerativeAI(geminiApiKey.value())
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: buffer.toString('base64'),
+          mimeType: mimeType || 'image/jpeg',
+        },
+      },
+      'Extrae todo el texto de esta imagen de forma literal y completa. Si no hay texto visible, describe el contenido relevante en detalle.',
+    ])
+    extractedText = result.response.text()
+  } else {
+    throw new HttpsError('invalid-argument', `Tipo de archivo no soportado: ${fileType}`)
+  }
+
+  return { extractedText: extractedText.trim() }
+})
+
 exports.sendInviteEmail = onCall({ secrets: [gmailUser, gmailPass] }, async (request) => {
   const { clientName, clientEmail, workflowName, flowLink, senderName } = request.data
 
@@ -48,7 +93,6 @@ exports.sendInviteEmail = onCall({ secrets: [gmailUser, gmailPass] }, async (req
   const pass = gmailPass.value()
 
   if (!user || !pass) {
-    // Secrets not configured — return gracefully so UI can still show the link
     return { sent: false, reason: 'Email no configurado.' }
   }
 
