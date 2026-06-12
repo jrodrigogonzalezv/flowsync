@@ -2,23 +2,25 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
 const { defineSecret } = require('firebase-functions/params')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
-const nodemailer = require('nodemailer')
 const admin = require('firebase-admin')
 
 if (!admin.apps.length) admin.initializeApp()
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY')
-const gmailUser = defineSecret('GMAIL_USER')
-const gmailPass = defineSecret('GMAIL_PASS')
+const resendApiKey = defineSecret('RESEND_API_KEY')
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Email helper (Resend) ────────────────────────────────────────────────────
 
-function createTransporter(user, pass) {
-  return nodemailer.createTransport({ service: 'gmail', auth: { user, pass } })
-}
-
-async function sendMail(transporter, options) {
-  return transporter.sendMail(options)
+async function sendEmail({ to, subject, html, fromName = 'FlowSync' }) {
+  const { Resend } = require('resend')
+  const resend = new Resend(resendApiKey.value())
+  const { error } = await resend.emails.send({
+    from: `${fromName} <onboarding@resend.dev>`,
+    to,
+    subject,
+    html,
+  })
+  if (error) throw new Error(error.message)
 }
 
 // ─── analyzeFlow ─────────────────────────────────────────────────────────────
@@ -80,56 +82,48 @@ exports.extractKnowledgeBaseFile = onCall({ secrets: [geminiApiKey] }, async (re
 
 // ─── sendInviteEmail ──────────────────────────────────────────────────────────
 
-exports.sendInviteEmail = onCall({ secrets: [gmailUser, gmailPass] }, async (request) => {
+exports.sendInviteEmail = onCall({ secrets: [resendApiKey] }, async (request) => {
   const { clientName, clientEmail, workflowName, flowLink, senderName } = request.data
-  if (!clientEmail || !flowLink) throw new HttpsError('invalid-argument', 'Faltan datos para enviar el email.')
+  if (!clientEmail || !flowLink) throw new HttpsError('invalid-argument', 'Faltan datos.')
 
-  const user = gmailUser.value()
-  const pass = gmailPass.value()
-  if (!user || !pass || user === 'pending@gmail.com') return { sent: false, reason: 'Email no configurado.' }
-
-  const html = buildInviteHtml({ title: `${senderName || 'Te invitan'} a completar un proceso`, name: clientName, body: `Has sido invitado a participar en el flujo <strong>"${workflowName}"</strong>. Solo toma unos minutos completarlo desde tu navegador.`, cta: 'Comenzar proceso →', link: flowLink })
-
-  await createTransporter(user, pass).sendMail({
-    from: `FlowSync <${user}>`,
-    to: `${clientName} <${clientEmail}>`,
+  await sendEmail({
+    to: clientEmail,
     subject: `${senderName || 'Te invitan'} a completar: ${workflowName}`,
-    html,
+    html: buildEmailHtml({
+      title: `${senderName || 'Un equipo'} te invita a completar un proceso`,
+      name: clientName,
+      body: `Has sido invitado a participar en el flujo <strong>"${workflowName}"</strong>. Solo toma unos minutos completarlo desde tu navegador.`,
+      cta: 'Comenzar proceso →',
+      link: flowLink,
+    }),
   })
   return { sent: true }
 })
 
 // ─── sendTeamInvite ───────────────────────────────────────────────────────────
 
-exports.sendTeamInvite = onCall({ secrets: [gmailUser, gmailPass] }, async (request) => {
+exports.sendTeamInvite = onCall({ secrets: [resendApiKey] }, async (request) => {
   const { email, role, inviteLink, senderName } = request.data
   if (!email || !inviteLink) throw new HttpsError('invalid-argument', 'Faltan datos.')
 
-  const user = gmailUser.value()
-  const pass = gmailPass.value()
-  if (!user || !pass || user === 'pending@gmail.com') return { sent: false, reason: 'Email no configurado.' }
-
   const roleLabel = role === 'admin' ? 'Administrador' : 'Supervisor'
-  const html = buildInviteHtml({
-    title: `${senderName || 'Alguien'} te invita a unirte a FlowSync`,
-    name: email,
-    body: `Has sido invitado a unirte como <strong>${roleLabel}</strong>. Haz clic en el botón para aceptar la invitación.`,
-    cta: 'Aceptar invitación →',
-    link: inviteLink,
-  })
-
-  await createTransporter(user, pass).sendMail({
-    from: `FlowSync <${user}>`,
+  await sendEmail({
     to: email,
-    subject: `${senderName || 'Invitación'} para unirte a FlowSync como ${roleLabel}`,
-    html,
+    subject: `${senderName || 'Alguien'} te invita a unirte a FlowSync como ${roleLabel}`,
+    html: buildEmailHtml({
+      title: `${senderName || 'Alguien'} te invita a unirte a FlowSync`,
+      name: email.split('@')[0],
+      body: `Has sido invitado como <strong>${roleLabel}</strong>. Haz clic para aceptar la invitación.`,
+      cta: 'Aceptar invitación →',
+      link: inviteLink,
+    }),
   })
   return { sent: true }
 })
 
 // ─── resendFlowLink ───────────────────────────────────────────────────────────
 
-exports.resendFlowLink = onCall({ secrets: [gmailUser, gmailPass] }, async (request) => {
+exports.resendFlowLink = onCall({ secrets: [resendApiKey] }, async (request) => {
   const { email } = request.data
   if (!email) throw new HttpsError('invalid-argument', 'Falta el email.')
 
@@ -139,39 +133,32 @@ exports.resendFlowLink = onCall({ secrets: [gmailUser, gmailPass] }, async (requ
     .where('status', 'in', ['invited', 'in_progress'])
     .get()
 
-  if (snap.empty) return { sent: false, reason: 'No se encontraron procesos pendientes.' }
+  if (snap.empty) return { sent: false, reason: 'No hay procesos pendientes.' }
 
-  const user = gmailUser.value()
-  const pass = gmailPass.value()
-  if (!user || !pass || user === 'pending@gmail.com') return { sent: false, reason: 'Email no configurado.' }
-
+  const origin = 'https://flowsync-e9709.web.app'
   const links = snap.docs.map(d => {
     const data = d.data()
-    const origin = process.env.FRONTEND_URL || 'https://flowsync-e9709.web.app'
     return `<li style="margin-bottom:8px"><a href="${origin}/flow/${d.id}" style="color:#1e3a8a">${data.workflowName || 'Proceso'}</a> — ${data.completedNodes || 0}/${data.totalNodes || 0} pasos completados</li>`
   }).join('')
 
-  const html = buildInviteHtml({
-    title: 'Tus procesos pendientes',
-    name: email.split('@')[0],
-    body: `Encontramos los siguientes procesos pendientes asociados a tu email:<ul style="margin:12px 0;padding-left:20px">${links}</ul>`,
-    cta: null,
-    link: null,
-  })
-
-  await createTransporter(user, pass).sendMail({
-    from: `FlowSync <${user}>`,
+  await sendEmail({
     to: email,
     subject: 'Tus procesos pendientes en FlowSync',
-    html,
+    html: buildEmailHtml({
+      title: 'Tus procesos pendientes',
+      name: email.split('@')[0],
+      body: `Encontramos los siguientes procesos pendientes:<ul style="margin:12px 0;padding-left:20px">${links}</ul>`,
+      cta: null,
+      link: null,
+    }),
   })
   return { sent: true }
 })
 
-// ─── sendReminders (scheduled daily) ─────────────────────────────────────────
+// ─── sendReminders (daily) ────────────────────────────────────────────────────
 
 exports.sendReminders = onSchedule(
-  { schedule: 'every 24 hours', secrets: [gmailUser, gmailPass], timeZone: 'America/Santiago' },
+  { schedule: 'every 24 hours', secrets: [resendApiKey], timeZone: 'America/Santiago' },
   async () => {
     const db = admin.firestore()
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -181,54 +168,44 @@ exports.sendReminders = onSchedule(
       .where('remindersSent', '==', 0)
       .get()
 
-    const gUser = gmailUser.value()
-    const gPass = gmailPass.value()
-    const canEmail = gUser && gPass && gUser !== 'pending@gmail.com'
-    const transporter = canEmail ? createTransporter(gUser, gPass) : null
-
     const batch = db.batch()
+    const origin = 'https://flowsync-e9709.web.app'
 
-    for (const doc of snap.docs) {
-      const data = doc.data()
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data()
       const updatedAt = data.updatedAt?.toDate()
       if (!updatedAt || updatedAt > cutoff) continue
+      if (!data.clientEmail) continue
 
-      const origin = 'https://flowsync-e9709.web.app'
-      const flowLink = `${origin}/flow/${doc.id}`
-      const name = data.clientName || 'Cliente'
-      const workflowName = data.workflowName || 'proceso'
-
-      if (canEmail && data.clientEmail) {
-        const html = buildInviteHtml({
-          title: `Tienes un proceso pendiente: "${workflowName}"`,
-          name,
-          body: `Te recordamos que tienes un proceso pendiente. Solo tienes <strong>${data.completedNodes || 0} de ${data.totalNodes || 0} pasos</strong> completados.`,
-          cta: 'Continuar donde lo dejé →',
-          link: flowLink,
+      try {
+        await sendEmail({
+          to: data.clientEmail,
+          subject: `Recordatorio: completa tu proceso "${data.workflowName || 'pendiente'}"`,
+          html: buildEmailHtml({
+            title: `Tienes un proceso pendiente`,
+            name: data.clientName || 'Cliente',
+            body: `Te recordamos que tienes el proceso <strong>"${data.workflowName}"</strong> pendiente. Llevas <strong>${data.completedNodes || 0} de ${data.totalNodes || 0} pasos</strong> completados.`,
+            cta: 'Continuar donde lo dejé →',
+            link: `${origin}/flow/${docSnap.id}`,
+          }),
         })
-        try {
-          await sendMail(transporter, {
-            from: `FlowSync <${gUser}>`,
-            to: `${name} <${data.clientEmail}>`,
-            subject: `Recordatorio: completa tu proceso "${workflowName}"`,
-            html,
-          })
-        } catch (e) {
-          console.error(`Error sending reminder to ${data.clientEmail}:`, e.message)
-        }
+      } catch (e) {
+        console.error(`Reminder error for ${data.clientEmail}:`, e.message)
       }
 
-      batch.update(doc.ref, { remindersSent: 1, lastReminderAt: admin.firestore.FieldValue.serverTimestamp() })
+      batch.update(docSnap.ref, {
+        remindersSent: 1,
+        lastReminderAt: admin.firestore.FieldValue.serverTimestamp(),
+      })
     }
 
     await batch.commit()
-    console.log(`Reminders processed for ${snap.docs.length} executions`)
   }
 )
 
-// ─── Email template helper ────────────────────────────────────────────────────
+// ─── Email template ───────────────────────────────────────────────────────────
 
-function buildInviteHtml({ title, name, body, cta, link }) {
+function buildEmailHtml({ title, name, body, cta, link }) {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -244,8 +221,10 @@ function buildInviteHtml({ title, name, body, cta, link }) {
       <p style="color:#475569;font-size:14px;margin:0 0 24px">Hola <strong style="color:#0f172a">${name}</strong>,</p>
       <h1 style="color:#0f172a;font-size:22px;font-weight:700;margin:0 0 12px;line-height:1.3">${title}</h1>
       <p style="color:#475569;font-size:15px;margin:0 0 28px;line-height:1.6">${body}</p>
-      ${cta && link ? `<a href="${link}" style="display:inline-block;background:#1e3a8a;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;letter-spacing:-.2px">${cta}</a>
-      <p style="color:#94a3b8;font-size:12px;margin:28px 0 0;line-height:1.6">Si el botón no funciona copia este enlace:<br><a href="${link}" style="color:#1e3a8a;word-break:break-all">${link}</a></p>` : ''}
+      ${cta && link ? `
+      <a href="${link}" style="display:inline-block;background:#1e3a8a;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;letter-spacing:-.2px">${cta}</a>
+      <p style="color:#94a3b8;font-size:12px;margin:28px 0 0;line-height:1.6">Si el botón no funciona copia este enlace:<br><a href="${link}" style="color:#1e3a8a;word-break:break-all">${link}</a></p>
+      ` : ''}
     </div>
     <div style="border-top:1px solid #f1f5f9;padding:16px 32px;background:#f8fafc">
       <p style="color:#94a3b8;font-size:12px;margin:0;text-align:center">Enviado por FlowSync · Si no esperabas este email, puedes ignorarlo.</p>
