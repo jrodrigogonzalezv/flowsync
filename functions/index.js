@@ -13,7 +13,8 @@ const resendApiKey = defineSecret('RESEND_API_KEY')
 
 async function sendEmail({ to, subject, html, fromName = 'FlowSync' }) {
   const { Resend } = require('resend')
-  const resend = new Resend(resendApiKey.value())
+  const apiKey = resendApiKey.value().replace(/^﻿/, '').trim()
+  const resend = new Resend(apiKey)
   const { data, error } = await resend.emails.send({
     from: `${fromName} <noreply@system.cl>`,
     to,
