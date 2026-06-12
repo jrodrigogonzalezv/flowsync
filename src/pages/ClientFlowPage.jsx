@@ -4,7 +4,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { db } from '../lib/firebase'
 import FlowStep from '../components/flow/FlowStep'
-import { Loader2, CheckCircle, AlertCircle, Sparkles, ChevronRight, Zap } from 'lucide-react'
+import { Loader2, CheckCircle, AlertCircle, Sparkles, ChevronRight, Zap, Mail, Send } from 'lucide-react'
 
 export default function ClientFlowPage() {
   const { id } = useParams()
@@ -98,14 +98,8 @@ export default function ClientFlowPage() {
     </div>
   )
 
-  if (error) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="text-center">
-        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <p className="text-slate-900 font-semibold">{error}</p>
-      </div>
-    </div>
-  )
+  if (error) return <RecoverLinkScreen />
+
 
   const progress = isCompleted ? 100 : steps.length > 0 ? (currentStepIndex / steps.length) * 100 : 0
 
@@ -188,6 +182,61 @@ function AiResultScreen({ result, stepNumber, totalSteps, submitting, onContinue
         className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm">
         {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : <>{stepNumber === totalSteps ? 'Finalizar' : 'Continuar'} <ChevronRight className="w-4 h-4" /></>}
       </button>
+    </div>
+  )
+}
+
+function RecoverLinkScreen() {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState('idle')
+
+  async function handleRecover(e) {
+    e.preventDefault()
+    if (!email) return
+    setStatus('loading')
+    try {
+      const fns = getFunctions()
+      const resend = httpsCallable(fns, 'resendFlowLink')
+      await resend({ email })
+      setStatus('sent')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm text-center">
+        <div className="w-14 h-14 bg-amber-50 border-2 border-amber-200 rounded-2xl flex items-center justify-center mx-auto mb-5">
+          <AlertCircle className="w-7 h-7 text-amber-500" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Link no encontrado</h2>
+        <p className="text-slate-500 text-sm mb-6">Este link no es válido o ya expiró. Si tienes un proceso pendiente, ingresa tu email y te reenviaremos el acceso.</p>
+        {status === 'sent' ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-4">
+            <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+            <p className="text-emerald-700 text-sm font-medium">¡Listo! Revisa tu email, te enviamos los links de tus procesos pendientes.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleRecover} className="space-y-3">
+            <input
+              type="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400"
+            />
+            {status === 'error' && <p className="text-xs text-red-600">Error al enviar. Intenta de nuevo.</p>}
+            <button
+              type="submit"
+              disabled={status === 'loading' || !email}
+              className="w-full bg-blue-800 hover:bg-blue-900 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Reenviar mis links</>}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   )
 }

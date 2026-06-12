@@ -42,12 +42,14 @@ export default function WorkflowBuilderPage() {
   async function handleSave({ nodes, edges }) {
     setSaving(true); setSaveError('')
     try {
+      const orgId = user.profile?.orgId || user.uid
       const payload = {
         name, knowledgeBase,
         knowledgeBaseFiles: kbFiles,
         nodes: nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
         edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null })),
         userId: user.uid,
+        orgId,
         updatedAt: serverTimestamp(),
       }
       if (isNew) {
