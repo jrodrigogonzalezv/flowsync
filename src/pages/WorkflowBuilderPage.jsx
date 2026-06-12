@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection } from 'fir
 import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import WorkflowBuilder from '../components/builder/WorkflowBuilder'
-import { ArrowLeft, Loader2, BookOpen, X } from 'lucide-react'
+import { ArrowLeft, Loader2, BookOpen, X, Save } from 'lucide-react'
 
 export default function WorkflowBuilderPage() {
   const { id } = useParams()
@@ -17,6 +17,7 @@ export default function WorkflowBuilderPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [saved, setSaved] = useState(false)
 
   const isNew = id === 'new'
 
@@ -34,17 +35,12 @@ export default function WorkflowBuilderPage() {
   }, [id])
 
   async function handleSave({ nodes, edges }) {
-    setSaving(true)
-    setSaveError('')
+    setSaving(true); setSaveError('')
     try {
       const payload = {
-        name,
-        knowledgeBase,
+        name, knowledgeBase,
         nodes: nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
-        edges: edges.map(e => ({
-          id: e.id, source: e.source, target: e.target,
-          sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null,
-        })),
+        edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null })),
         userId: user.uid,
         updatedAt: serverTimestamp(),
       }
@@ -54,6 +50,8 @@ export default function WorkflowBuilderPage() {
         navigate(`/workflows/${ref.id}`, { replace: true })
       } else {
         await updateDoc(doc(db, 'workflows', id), payload)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
       }
     } catch (e) {
       setSaveError(e.message || 'Error al guardar')
@@ -63,31 +61,32 @@ export default function WorkflowBuilderPage() {
   }
 
   if (loading) return (
-    <div className="h-full flex items-center justify-center bg-gray-950">
-      <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+    <div className="h-full flex items-center justify-center bg-slate-50">
+      <Loader2 className="w-6 h-6 text-blue-800 animate-spin" />
     </div>
   )
 
   return (
-    <div className="h-full flex flex-col bg-gray-950">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800 bg-gray-900">
-        <button onClick={() => navigate('/workflows')} className="text-gray-400 hover:text-white transition-colors">
+    <div className="h-full flex flex-col bg-slate-50">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white shadow-sm">
+        <button onClick={() => navigate('/workflows')} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          className="bg-transparent text-white font-semibold text-lg focus:outline-none border-b border-transparent focus:border-gray-500 px-1 transition-colors flex-1 min-w-0"
+          className="bg-transparent text-slate-900 font-semibold text-lg focus:outline-none border-b-2 border-transparent focus:border-blue-800 px-1 transition-colors flex-1 min-w-0"
           placeholder="Nombre del flujo"
         />
-        {saveError && <span className="text-red-400 text-xs">{saveError}</span>}
+        {saveError && <span className="text-red-600 text-xs">{saveError}</span>}
+        {saved && <span className="text-emerald-600 text-xs font-medium">Guardado</span>}
         <button
           onClick={() => setShowKB(true)}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0"
+          className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex-shrink-0"
         >
           <BookOpen className="w-4 h-4" />
           <span className="hidden sm:block">Base de conocimiento</span>
-          {knowledgeBase && <span className="w-2 h-2 bg-indigo-400 rounded-full" />}
+          {knowledgeBase && <span className="w-2 h-2 bg-blue-800 rounded-full" />}
         </button>
       </div>
 
@@ -96,14 +95,14 @@ export default function WorkflowBuilderPage() {
       </div>
 
       {showKB && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl flex flex-col max-h-[80vh]">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl flex flex-col max-h-[80vh] shadow-xl">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <div>
-                <h3 className="text-white font-semibold">Base de conocimiento</h3>
-                <p className="text-gray-400 text-sm mt-0.5">La IA usará este texto para analizar las respuestas de tus clientes.</p>
+                <h3 className="text-slate-900 font-semibold">Base de conocimiento</h3>
+                <p className="text-slate-500 text-sm mt-0.5">La IA usará este texto para analizar las respuestas de tus clientes.</p>
               </div>
-              <button onClick={() => setShowKB(false)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setShowKB(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -112,26 +111,16 @@ export default function WorkflowBuilderPage() {
                 value={knowledgeBase}
                 onChange={e => setKnowledgeBase(e.target.value)}
                 rows={14}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 resize-none font-mono leading-relaxed"
-                placeholder="Pega aquí tu base de conocimiento: criterios de evaluación, requisitos, preguntas frecuentes, políticas, etc.
-
-Ejemplo:
-- El cliente debe tener al menos 2 años de experiencia
-- Se requiere certificación vigente
-- El presupuesto mínimo es de $5.000..."
+                className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 resize-none font-mono leading-relaxed placeholder-slate-400"
+                placeholder="Pega aquí tu base de conocimiento: criterios de evaluación, requisitos, preguntas frecuentes, políticas, etc."
               />
-              <p className="text-gray-500 text-xs mt-2">
-                {knowledgeBase.length} caracteres · ~{Math.ceil(knowledgeBase.length / 4)} tokens
-              </p>
+              <p className="text-slate-400 text-xs mt-2">{knowledgeBase.length} caracteres</p>
             </div>
-            <div className="p-5 border-t border-gray-800 flex justify-end gap-3">
-              <button onClick={() => setShowKB(false)} className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
+              <button onClick={() => setShowKB(false)} className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors font-medium">
                 Cancelar
               </button>
-              <button
-                onClick={() => setShowKB(false)}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
-              >
+              <button onClick={() => setShowKB(false)} className="px-5 py-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium rounded-xl transition-colors">
                 Guardar
               </button>
             </div>
