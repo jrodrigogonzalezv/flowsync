@@ -1,64 +1,79 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Zap } from 'lucide-react'
 
 export default function LoginPage() {
   const { loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth()
   const navigate = useNavigate()
-  const [mode, setMode] = useState('login') // 'login' | 'register'
+  const [mode, setMode] = useState('login')
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleGoogle() {
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
       await loginWithGoogle()
       navigate('/dashboard')
     } catch (e) {
       setError(e.code || e.message || 'Error al iniciar con Google')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault(); setLoading(true); setError('')
     try {
-      if (mode === 'login') {
-        await loginWithEmail(form.email, form.password)
-      } else {
-        await registerWithEmail(form.email, form.password, form.name)
-      }
+      if (mode === 'login') await loginWithEmail(form.email, form.password)
+      else await registerWithEmail(form.email, form.password, form.name)
       navigate('/dashboard')
     } catch (e) {
       setError(e.code === 'auth/invalid-credential' ? 'Correo o contraseña incorrectos' : e.message)
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">FlowSync</h1>
-          <p className="text-gray-400 mt-2">Automatiza tus procesos con IA</p>
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-blue-800 flex-col justify-between p-12">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-white font-bold text-lg">FlowSync</span>
         </div>
-
-        <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800">
-          <h2 className="text-xl font-semibold text-white mb-6">
-            {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+        <div>
+          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
+            Automatiza tus<br />procesos con IA
           </h2>
+          <p className="text-blue-200 text-lg leading-relaxed">
+            Diseña flujos de trabajo, invita clientes y deja que la IA analice cada paso del proceso.
+          </p>
+        </div>
+        <p className="text-blue-300 text-sm">© 2026 FlowSync</p>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden flex items-center gap-2 mb-8">
+            <div className="w-7 h-7 bg-blue-800 rounded-lg flex items-center justify-center">
+              <Zap className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-slate-900">FlowSync</span>
+          </div>
+
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">
+            {mode === 'login' ? 'Bienvenido de vuelta' : 'Crear cuenta'}
+          </h1>
+          <p className="text-slate-500 text-sm mb-8">
+            {mode === 'login' ? 'Ingresa tus credenciales para continuar' : 'Completa el formulario para comenzar'}
+          </p>
 
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium py-3 px-4 rounded-xl hover:bg-gray-100 transition-colors mb-6 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 text-slate-700 font-medium py-2.5 px-4 rounded-xl hover:bg-slate-50 transition-colors mb-6 disabled:opacity-50 shadow-sm"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -70,56 +85,47 @@ export default function LoginPage() {
           </button>
 
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-gray-700" />
-            <span className="text-gray-500 text-sm">o</span>
-            <div className="flex-1 h-px bg-gray-700" />
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-slate-400 text-xs">o</span>
+            <div className="flex-1 h-px bg-slate-200" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <input
-                type="text"
-                placeholder="Nombre completo"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                type="text" placeholder="Nombre completo"
+                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 required
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 placeholder-gray-500"
+                className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400 bg-white"
               />
             )}
             <input
-              type="email"
-              placeholder="Correo electrónico"
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              type="email" placeholder="Correo electrónico"
+              value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               required
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 placeholder-gray-500"
+              className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400 bg-white"
             />
             <input
-              type="password"
-              placeholder="Contraseña"
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              type="password" placeholder="Contraseña"
+              value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
               required
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 placeholder-gray-500"
+              className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400 bg-white"
             />
-
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-
+            {error && <p className="text-red-600 text-sm">{error}</p>}
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-4 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              type="submit" disabled={loading}
+              className="w-full bg-blue-800 hover:bg-blue-900 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
             </button>
           </form>
 
-          <p className="text-center text-gray-500 text-sm mt-6">
+          <p className="text-center text-slate-500 text-sm mt-6">
             {mode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
             <button
               onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
-              className="text-indigo-400 hover:text-indigo-300"
+              className="text-blue-800 hover:text-blue-900 font-medium"
             >
               {mode === 'login' ? 'Regístrate' : 'Inicia sesión'}
             </button>
