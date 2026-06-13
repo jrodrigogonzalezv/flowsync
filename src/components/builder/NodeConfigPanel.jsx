@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
 import { NODE_TYPES_CONFIG } from './nodes/nodeTypes'
 
-export default function NodeConfigPanel({ node, onChange, onClose }) {
+export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptionEdge }) {
   const [data, setData] = useState(node.data)
   const config = NODE_TYPES_CONFIG[node.type] || {}
 
@@ -24,6 +24,20 @@ export default function NodeConfigPanel({ node, onChange, onClose }) {
 
   function removeField(idx) {
     update('fields', (data.fields || []).filter((_, i) => i !== idx))
+  }
+
+  function addOption() {
+    update('options', [...(data.options || []), { id: Date.now().toString(), label: '' }])
+  }
+
+  function updateOption(idx, label) {
+    update('options', (data.options || []).map((o, i) => i === idx ? { ...o, label } : o))
+  }
+
+  function removeOption(idx) {
+    const removed = (data.options || [])[idx]
+    update('options', (data.options || []).filter((_, i) => i !== idx))
+    if (removed?.id) onDeleteOptionEdge?.(node.id, removed.id)
   }
 
   const inputClass = "w-full border border-slate-300 text-slate-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400 bg-white"
@@ -119,6 +133,37 @@ export default function NodeConfigPanel({ node, onChange, onClose }) {
                 className={`${inputClass} resize-none`} placeholder="Mensaje a enviar al cliente..." />
             </div>
           </>
+        )}
+
+        {node.type === 'decision' && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-slate-600">Opciones</label>
+              <button onClick={addOption} className="flex items-center gap-1 text-xs text-indigo-700 hover:text-indigo-900 font-medium">
+                <Plus className="w-3 h-3" /> Agregar
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(data.options || []).map((opt, i) => (
+                <div key={opt.id} className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
+                  <input
+                    value={opt.label}
+                    onChange={e => updateOption(i, e.target.value)}
+                    className="flex-1 bg-transparent border-none text-slate-900 text-sm focus:outline-none placeholder-slate-400"
+                    placeholder={`Opción ${i + 1}`}
+                  />
+                  <button onClick={() => removeOption(i)} className="text-indigo-300 hover:text-red-500 transition-colors flex-shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {!(data.options || []).length && (
+                <p className="text-xs text-slate-400 text-center py-3">Sin opciones — agrega una</p>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">Cada opción genera un conector. Arrastra desde el punto para enlazar al siguiente paso.</p>
+          </div>
         )}
       </div>
     </div>

@@ -30,7 +30,34 @@ export default function FlowNode({ data, selected, type }) {
         )}
       </div>
 
-      {config.maxOutputs === 2 ? (
+      {type === 'decision' ? (
+        <>
+          {(data.options || []).map((opt, i, arr) => (
+            <Handle
+              key={opt.id}
+              type="source"
+              position={Position.Bottom}
+              id={opt.id}
+              style={{ left: `${((i + 1) / (arr.length + 1)) * 100}%` }}
+              className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white"
+            />
+          ))}
+          {(data.options || []).length > 0 && (
+            <div className="flex pb-2.5 pt-1 px-2" style={{ gap: '2px' }}>
+              {(data.options || []).map(opt => (
+                <span key={opt.id} className="flex-1 text-[10px] font-semibold text-indigo-600 text-center truncate">
+                  {opt.label || 'Opción'}
+                </span>
+              ))}
+            </div>
+          )}
+          {!(data.options || []).length && (
+            <div className="pb-2.5 pt-1 text-center">
+              <span className="text-[10px] text-slate-400">Sin opciones</span>
+            </div>
+          )}
+        </>
+      ) : config.maxOutputs === 2 ? (
         <>
           <Handle type="source" position={Position.Bottom} id="yes" style={{ left: '30%' }}
             className="!w-3 !h-3 !bg-emerald-500 !border-2 !border-white" />

@@ -9,7 +9,7 @@ import NodeConfigPanel from './NodeConfigPanel'
 import FlowNode from './nodes/FlowNode'
 import { Save, Loader2 } from 'lucide-react'
 
-const nodeTypes = { start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode, notification: FlowNode, end: FlowNode }
+const nodeTypes = { start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode, decision: FlowNode, notification: FlowNode, end: FlowNode }
 
 const initialNodes = [
   { id: 'start-1', type: 'start', position: { x: 300, y: 80 }, data: { label: 'Inicio' } },
@@ -37,7 +37,10 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
     if (!type || !reactFlowInstance) return
     const bounds = reactFlowWrapper.current.getBoundingClientRect()
     const position = reactFlowInstance.screenToFlowPosition({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
-    setNodes(nds => [...nds, { id: `${type}-${++idCounter}`, type, position, data: { label: '', description: '', fields: [] } }])
+    const data = type === 'decision'
+      ? { label: '', description: '', options: [] }
+      : { label: '', description: '', fields: [] }
+    setNodes(nds => [...nds, { id: `${type}-${++idCounter}`, type, position, data }])
   }
 
   function onNodeClick(_, node) { setSelectedNode(node) }
@@ -46,6 +49,10 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   function onNodeDataChange(nodeId, newData) {
     setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: newData } : n))
     setSelectedNode(prev => prev?.id === nodeId ? { ...prev, data: newData } : prev)
+  }
+
+  function onDeleteOptionEdge(nodeId, handleId) {
+    setEdges(eds => eds.filter(e => !(e.source === nodeId && e.sourceHandle === handleId)))
   }
 
   return (
@@ -77,7 +84,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
           <Controls className="!border-slate-200 !shadow-sm" />
           <MiniMap
             nodeColor={n => {
-              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', notification: '#ea580c', end: '#dc2626' }
+              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', decision: '#4338ca', notification: '#ea580c', end: '#dc2626' }
               return colors[n.type] || '#94a3b8'
             }}
             className="!border-slate-200 !shadow-sm"
@@ -86,7 +93,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
       </div>
 
       {selectedNode && (
-        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
+        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} onDeleteOptionEdge={onDeleteOptionEdge} />
       )}
     </div>
   )
