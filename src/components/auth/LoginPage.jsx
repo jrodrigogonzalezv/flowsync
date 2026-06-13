@@ -1,24 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { Loader2, Zap } from 'lucide-react'
 
 export default function LoginPage() {
-  const { loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth()
+  const { user, loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth()
   const navigate = useNavigate()
   const [mode, setMode] = useState('login')
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Navigate once auth state confirms the user is logged in.
+  // Avoids the race condition between signInWithPopup resolving and
+  // onAuthStateChanged finishing ensureUserDoc + setting the user context.
+  useEffect(() => {
+    if (user) navigate('/dashboard', { replace: true })
+  }, [user])
+
   async function handleGoogle() {
     setLoading(true); setError('')
     try {
       await loginWithGoogle()
-      navigate('/dashboard')
+      // navigation is handled by the useEffect above
     } catch (e) {
       setError(e.code || e.message || 'Error al iniciar con Google')
-    } finally { setLoading(false) }
+      setLoading(false)
+    }
   }
 
   async function handleSubmit(e) {
@@ -26,10 +34,11 @@ export default function LoginPage() {
     try {
       if (mode === 'login') await loginWithEmail(form.email, form.password)
       else await registerWithEmail(form.email, form.password, form.name)
-      navigate('/dashboard')
+      // navigation is handled by the useEffect above
     } catch (e) {
       setError(e.code === 'auth/invalid-credential' ? 'Correo o contraseña incorrectos' : e.message)
-    } finally { setLoading(false) }
+      setLoading(false)
+    }
   }
 
   return (
