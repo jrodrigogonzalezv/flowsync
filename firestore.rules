@@ -34,7 +34,8 @@ service cloud.firestore {
     }
 
     match /workflows/{workflowId} {
-      allow read: if isAuth() && (
+      // unauthenticated clients need to read the workflow to complete flows
+      allow read: if !isAuth() || (
         resource.data.userId == request.auth.uid ||
         sameOrg(resource.data.orgId)
       );
@@ -46,12 +47,9 @@ service cloud.firestore {
     }
 
     match /executions/{executionId} {
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid ||
-        sameOrg(resource.data.orgId)
-      );
+      // execution ID is the access token — clients read and update without auth
+      allow read: if true;
       allow create: if isAuth();
-      // clients fill in flows without auth — execution ID is the access token
       allow update: if true;
       allow delete: if isAdmin() && resource.data.userId == request.auth.uid;
     }
