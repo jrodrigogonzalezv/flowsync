@@ -52,6 +52,11 @@ service cloud.firestore {
       allow create: if isAuth();
       allow update: if true;
       allow delete: if isAdmin() && resource.data.userId == request.auth.uid;
+
+      match /messages/{msgId} {
+        allow read, create: if true;
+        allow update, delete: if false;
+      }
     }
   }
 }

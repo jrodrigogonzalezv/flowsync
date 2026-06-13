@@ -1,8 +1,10 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore')
 const { defineSecret } = require('firebase-functions/params')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const admin = require('firebase-admin')
+const crypto = require('crypto')
 
 if (!admin.apps.length) admin.initializeApp()
 
@@ -207,6 +209,74 @@ exports.sendReminders = onSchedule(
     await batch.commit()
   }
 )
+
+// ─── onExecutionComplete — webhook + conversion tracking ─────────────────────
+
+async function sendWebhookWithRetry(url, payload, secret, maxRetries = 3) {
+  const body = JSON.stringify(payload)
+  const signature = secret
+    ? 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex')
+    : null
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-FlowSync-Event': payload.event,
+    'X-FlowSync-Delivery': payload.deliveryId,
+    ...(signature ? { 'X-FlowSync-Signature': signature } : {}),
+  }
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(10000) })
+      if (res.ok) return { ok: true, status: res.status }
+      if (res.status < 500) return { ok: false, status: res.status } // 4xx: no retry
+    } catch (e) {
+      if (attempt === maxRetries - 1) throw e
+    }
+    await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt))) // 1s, 2s, 4s
+  }
+  return { ok: false }
+}
+
+exports.onExecutionComplete = onDocumentUpdated('executions/{executionId}', async event => {
+  const before = event.data.before.data()
+  const after  = event.data.after.data()
+
+  // Only fire on the transition to 'completed'
+  if (before.status === 'completed' || after.status !== 'completed') return
+
+  const db = admin.firestore()
+  const orgSnap = await db.doc(`organizations/${after.orgId}`).get()
+  const org = orgSnap.data() || {}
+
+  if (!org.webhookUrl) return
+
+  const deliveryId = crypto.randomUUID()
+  const payload = {
+    event: 'flow.completed',
+    deliveryId,
+    timestamp: new Date().toISOString(),
+    execution: {
+      id: event.params.executionId,
+      clientName:       after.clientName,
+      clientEmail:      after.clientEmail,
+      workflowId:       after.workflowId,
+      workflowName:     after.workflowName,
+      orgId:            after.orgId,
+      responses:        after.responses        || {},
+      navigationHistory: after.navigationHistory || [],
+      utmParams:        after.utmParams         || {},
+      startedAt:  after.createdAt?.toDate?.()?.toISOString()  ?? null,
+      completedAt: after.updatedAt?.toDate?.()?.toISOString() ?? null,
+    },
+  }
+
+  try {
+    const result = await sendWebhookWithRetry(org.webhookUrl, payload, org.webhookSecret || null)
+    console.log(`Webhook ${deliveryId}: ${result.ok ? 'ok' : 'failed'} (${result.status ?? 'timeout'})`)
+  } catch (e) {
+    console.error(`Webhook ${deliveryId} error after retries:`, e.message)
+  }
+})
 
 // ─── Email template ───────────────────────────────────────────────────────────
 

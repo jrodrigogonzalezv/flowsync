@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from '../utils/date'
-import { GitBranch, Clock, CheckCircle, AlertCircle, Mail } from 'lucide-react'
+import { GitBranch, Clock, CheckCircle, AlertCircle, Mail, MessageCircle } from 'lucide-react'
 
 const statusIcon = {
   invited:     <Mail className="w-3.5 h-3.5 text-slate-400" />,
@@ -13,17 +13,33 @@ export default function KanbanCard({ execution, onClick }) {
     ? Math.round((execution.completedNodes / execution.totalNodes) * 100)
     : 0
 
+  const needsSupport = !!execution.humanSupportRequested && execution.status !== 'completed'
+
   return (
     <div
       onClick={onClick}
-      className="bg-white border border-slate-200 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all hover:border-slate-300"
+      className={`relative bg-white border rounded-xl p-4 cursor-pointer transition-all
+        ${needsSupport
+          ? 'border-red-400 ring-2 ring-red-400/30 hover:shadow-lg hover:shadow-red-100'
+          : 'border-slate-200 hover:shadow-md hover:border-slate-300'
+        }`}
     >
+      {needsSupport && (
+        <div className="absolute -top-1.5 -right-1.5 flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md animate-pulse">
+          <MessageCircle className="w-2.5 h-2.5" />
+          AYUDA
+        </div>
+      )}
+
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">{execution.clientName || 'Cliente'}</p>
           <p className="text-xs text-slate-400 truncate max-w-[140px] mt-0.5">{execution.clientEmail}</p>
         </div>
-        {statusIcon[execution.status]}
+        {needsSupport
+          ? <MessageCircle className="w-3.5 h-3.5 text-red-500" />
+          : statusIcon[execution.status]
+        }
       </div>
 
       <div className="flex items-center gap-1.5 mb-3">
@@ -38,7 +54,7 @@ export default function KanbanCard({ execution, onClick }) {
         </div>
         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-800 rounded-full transition-all"
+            className={`h-full rounded-full transition-all ${needsSupport ? 'bg-red-400' : 'bg-blue-800'}`}
             style={{ width: `${progress}%` }}
           />
         </div>

@@ -4,6 +4,7 @@ import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import KanbanBoard from '../components/kanban/KanbanBoard'
 import InviteClientModal from '../components/kanban/InviteClientModal'
+import OperatorChatPanel from '../components/chat/OperatorChatPanel'
 import { UserPlus, Loader2 } from 'lucide-react'
 
 export default function ClientsPage() {
@@ -56,7 +57,9 @@ export default function ClientsPage() {
         <InviteClientModal onClose={() => setShowInvite(false)} onCreated={() => setShowInvite(false)} />
       )}
 
-      {selectedExec && (
+      {selectedExec && selectedExec.humanSupportRequested && selectedExec.status !== 'completed' ? (
+        <OperatorChatPanel execution={selectedExec} onClose={() => setSelectedExec(null)} />
+      ) : selectedExec ? (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setSelectedExec(null)}>
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-slate-900 mb-4">{selectedExec.clientName}</h3>
@@ -81,7 +84,7 @@ export default function ClientsPage() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
