@@ -246,6 +246,8 @@ export default function ClientFlowPage() {
                 submitting={submitting}
                 onContinue={() => handleSubmit({})}
               />
+            : currentNode?.type === 'condition'
+            ? <ConditionStep node={currentNode} onChoose={handleDecision} />
             : currentNode?.type === 'decision'
             ? <DecisionStep node={currentNode} onChoose={handleDecision} />
             : currentNode
@@ -260,6 +262,59 @@ export default function ClientFlowPage() {
             : <div className="text-center text-slate-400 py-20">Este flujo no tiene pasos configurados.</div>
           }
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── ConditionStep ────────────────────────────────────────────────────────────
+
+function ConditionStep({ node, onChoose }) {
+  const [chosen, setChosen] = useState(null)
+
+  async function pick(handle, label) {
+    if (chosen) return
+    setChosen(handle)
+    await onChoose({ id: handle, label })
+  }
+
+  return (
+    <div>
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 mb-6">
+        <span className="text-amber-600 text-sm">◆</span>
+        <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Condición</span>
+      </div>
+      <h2 className="text-2xl font-bold text-slate-900 mb-3">{node.data?.label || 'Condición'}</h2>
+      {node.data?.condition && (
+        <p className="text-slate-500 text-base mb-8 leading-relaxed">{node.data.condition}</p>
+      )}
+      <div className="flex gap-3">
+        <button
+          onClick={() => pick('yes', 'Sí')}
+          disabled={!!chosen}
+          className={`flex-1 py-4 rounded-xl border-2 font-semibold text-base transition-all
+            ${chosen === 'yes'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-md'
+              : chosen
+              ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-50'
+              : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-500 cursor-pointer'
+            }`}
+        >
+          ✓ Sí
+        </button>
+        <button
+          onClick={() => pick('no', 'No')}
+          disabled={!!chosen}
+          className={`flex-1 py-4 rounded-xl border-2 font-semibold text-base transition-all
+            ${chosen === 'no'
+              ? 'border-rose-600 bg-rose-600 text-white shadow-md'
+              : chosen
+              ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-50'
+              : 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-500 cursor-pointer'
+            }`}
+        >
+          ✗ No
+        </button>
       </div>
     </div>
   )
