@@ -43,6 +43,17 @@ export const NODE_TYPES_CONFIG = {
     maxInputs: 1,
     maxOutputs: 2,
   },
+  decision: {
+    label: 'Decisión',
+    color: 'bg-indigo-600',
+    border: 'border-indigo-300',
+    textColor: 'text-indigo-700',
+    bgLight: 'bg-indigo-50',
+    icon: '🔀',
+    description: 'El cliente elige entre varias opciones',
+    maxInputs: 1,
+    maxOutputs: null,
+  },
   notification: {
     label: 'Notificación',
     color: 'bg-orange-600',
