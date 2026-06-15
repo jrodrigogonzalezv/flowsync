@@ -208,6 +208,60 @@ exports.sendReminders = onSchedule(
   }
 )
 
+// ─── sendMidwayReminder (every 2 hours) ──────────────────────────────────────
+
+exports.sendMidwayReminder = onSchedule(
+  { schedule: 'every 2 hours', secrets: [resendApiKey], timeZone: 'America/Santiago' },
+  async () => {
+    const db = admin.firestore()
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000)
+
+    const snap = await db.collection('executions')
+      .where('status', '==', 'in_progress')
+      .get()
+
+    const batch = db.batch()
+    const origin = 'https://flowsync-e9709.web.app'
+
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data()
+      if (data.midwayEmailSent === true) continue
+      const updatedAt = data.updatedAt?.toDate()
+      if (!updatedAt || updatedAt > cutoff) continue
+      if (!data.clientEmail) continue
+
+      const completedNodes = data.completedNodes || 0
+      const totalNodes = data.totalNodes || 0
+      const progressText = totalNodes > 0
+        ? `Llevas <strong>${completedNodes} de ${totalNodes} pasos</strong> completados.`
+        : 'Dejaste el proceso sin terminar.'
+
+      try {
+        await sendEmail({
+          to: data.clientEmail,
+          subject: `Dejaste el proceso "${data.workflowName || 'pendiente'}" a medias`,
+          html: buildEmailHtml({
+            title: 'Retomá tu proceso cuando quieras',
+            name: data.clientName || 'Cliente',
+            body: `Notamos que no terminaste el proceso <strong>"${data.workflowName}"</strong>. ${progressText} Podés continuar desde donde lo dejaste en cualquier momento.`,
+            cta: 'Continuar el proceso →',
+            link: `${origin}/flow/${docSnap.id}`,
+          }),
+        })
+      } catch (e) {
+        console.error(`Midway reminder error for ${data.clientEmail}:`, e.message)
+      }
+
+      batch.update(docSnap.ref, {
+        midwayEmailSent: true,
+        midwayEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      })
+    }
+
+    await batch.commit()
+  }
+)
+
 // ─── Email template ───────────────────────────────────────────────────────────
 
 function buildEmailHtml({ title, name, body, cta, link }) {
