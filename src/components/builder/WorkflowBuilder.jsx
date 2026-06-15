@@ -7,7 +7,7 @@ import '@xyflow/react/dist/style.css'
 import NodeSidebar from './NodeSidebar'
 import NodeConfigPanel from './NodeConfigPanel'
 import FlowNode from './nodes/FlowNode'
-import { Save, Loader2, Layers, X } from 'lucide-react'
+import { Save, Loader2, Monitor } from 'lucide-react'
 
 const nodeTypes = { start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode, notification: FlowNode, end: FlowNode }
 
@@ -21,7 +21,6 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(workflow?.nodes || initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(workflow?.edges || [])
   const [selectedNode, setSelectedNode] = useState(null)
-  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
 
@@ -39,10 +38,9 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
     const bounds = reactFlowWrapper.current.getBoundingClientRect()
     const position = reactFlowInstance.screenToFlowPosition({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
     setNodes(nds => [...nds, { id: `${type}-${++idCounter}`, type, position, data: { label: '', description: '', fields: [] } }])
-    setShowMobileSidebar(false)
   }
 
-  function onNodeClick(_, node) { setSelectedNode(node); setShowMobileSidebar(false) }
+  function onNodeClick(_, node) { setSelectedNode(node) }
   function onPaneClick() { setSelectedNode(null) }
 
   function onNodeDataChange(nodeId, newData) {
@@ -51,33 +49,24 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   }
 
   return (
-    <div className="absolute inset-0 flex">
-
-      {/* NodeSidebar: hidden on mobile by default, overlay when toggled, always visible on md+ */}
-      <div className={showMobileSidebar ? 'flex absolute inset-y-0 left-0 z-30 shadow-xl' : 'hidden md:flex'}>
-        <NodeSidebar onClose={() => setShowMobileSidebar(false)} showClose={showMobileSidebar} />
+    <>
+    {/* Mobile: use-desktop message */}
+    <div className="md:hidden absolute inset-0 flex flex-col items-center justify-center bg-slate-50 p-8 text-center">
+      <div className="w-16 h-16 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-center justify-center mb-5">
+        <Monitor className="w-8 h-8 text-blue-800" />
       </div>
+      <h3 className="text-lg font-bold text-slate-900 mb-2">Abrí desde tu computadora</h3>
+      <p className="text-slate-500 text-sm leading-relaxed max-w-xs">
+        El editor de flujos requiere arrastrar y soltar nodos, lo que no es posible desde un celular. Accedé desde una pantalla más grande para crear y editar flujos.
+      </p>
+    </div>
 
-      {/* Mobile backdrop for sidebar */}
-      {showMobileSidebar && (
-        <div
-          className="md:hidden absolute inset-0 bg-black/30 z-20"
-          onClick={() => setShowMobileSidebar(false)}
-        />
-      )}
+    {/* Desktop: full builder */}
+    <div className="hidden md:flex absolute inset-0">
 
-      <div className="flex-1 relative min-w-0" ref={reactFlowWrapper}>
+      <NodeSidebar />
 
-        {/* Controls row: top-left mobile toggle, top-right save */}
-        <div className="absolute top-4 left-4 z-10 md:hidden">
-          <button
-            onClick={() => setShowMobileSidebar(s => !s)}
-            className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 shadow-sm"
-          >
-            <Layers className="w-4 h-4 text-blue-800" />
-            Nodos
-          </button>
-        </div>
+      <div className="flex-1 relative" ref={reactFlowWrapper}>
 
         <div className="absolute top-4 right-4 z-10">
           <button
@@ -101,27 +90,21 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
         >
           <Background variant={BackgroundVariant.Dots} color="#cbd5e1" gap={20} size={1} />
           <Controls className="!border-slate-200 !shadow-sm" />
-          {window.innerWidth >= 640 && (
-            <MiniMap
-              nodeColor={n => {
-                const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', notification: '#ea580c', end: '#dc2626' }
-                return colors[n.type] || '#94a3b8'
-              }}
-              className="!border-slate-200 !shadow-sm"
-            />
-          )}
+          <MiniMap
+            nodeColor={n => {
+              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', notification: '#ea580c', end: '#dc2626' }
+              return colors[n.type] || '#94a3b8'
+            }}
+            className="!border-slate-200 !shadow-sm"
+          />
         </ReactFlow>
       </div>
 
-      {/* NodeConfigPanel: static on md+, absolute overlay on mobile */}
+      {/* NodeConfigPanel */}
       {selectedNode && (
-        <>
-          <div className="md:hidden absolute inset-0 bg-black/20 z-20" onClick={() => setSelectedNode(null)} />
-          <div className="absolute inset-y-0 right-0 z-30 md:static md:z-auto shadow-xl md:shadow-sm">
-            <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
-          </div>
-        </>
+        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
       )}
     </div>
+    </>
   )
 }

@@ -1,7 +1,6 @@
-import { X } from 'lucide-react'
 import { NODE_TYPES_CONFIG } from './nodes/nodeTypes'
 
-export default function NodeSidebar({ onClose, showClose }) {
+export default function NodeSidebar() {
   function onDragStart(e, nodeType) {
     e.dataTransfer.setData('application/reactflow', nodeType)
     e.dataTransfer.effectAllowed = 'move'
@@ -9,16 +8,9 @@ export default function NodeSidebar({ onClose, showClose }) {
 
   return (
     <div className="w-56 bg-white border-r border-slate-200 flex flex-col shadow-sm">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-        <div>
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nodos</h3>
-          <p className="text-xs text-slate-400 mt-1">Arrastra al canvas</p>
-        </div>
-        {showClose && (
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-            <X className="w-4 h-4" />
-          </button>
-        )}
+      <div className="p-4 border-b border-slate-100">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nodos</h3>
+        <p className="text-xs text-slate-400 mt-1">Arrastra al canvas</p>
       </div>
 
       <div className="p-3 space-y-2 overflow-y-auto flex-1">
