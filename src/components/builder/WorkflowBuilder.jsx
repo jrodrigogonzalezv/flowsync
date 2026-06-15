@@ -53,11 +53,8 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   return (
     <div className="flex h-full relative overflow-hidden">
 
-      {/* NodeSidebar: always visible on md+, overlay on mobile */}
-      <div className={`
-        hidden md:flex md:static md:z-auto md:shadow-none
-        ${showMobileSidebar ? '!flex absolute inset-y-0 left-0 z-30 shadow-xl' : ''}
-      `}>
+      {/* NodeSidebar: hidden on mobile by default, overlay when toggled, always visible on md+ */}
+      <div className={showMobileSidebar ? 'flex absolute inset-y-0 left-0 z-30 shadow-xl' : 'hidden md:flex'}>
         <NodeSidebar onClose={() => setShowMobileSidebar(false)} showClose={showMobileSidebar} />
       </div>
 
@@ -116,17 +113,12 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
 
       {/* NodeConfigPanel: static on md+, absolute overlay on mobile */}
       {selectedNode && (
-        <div className="absolute inset-y-0 right-0 z-30 md:static md:z-auto shadow-xl md:shadow-sm">
-          <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
-        </div>
-      )}
-
-      {/* Mobile backdrop for config panel */}
-      {selectedNode && (
-        <div
-          className="md:hidden absolute inset-0 bg-black/20 z-20"
-          onClick={() => setSelectedNode(null)}
-        />
+        <>
+          <div className="md:hidden absolute inset-0 bg-black/20 z-20" onClick={() => setSelectedNode(null)} />
+          <div className="absolute inset-y-0 right-0 z-30 md:static md:z-auto shadow-xl md:shadow-sm">
+            <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
+          </div>
+        </>
       )}
     </div>
   )
