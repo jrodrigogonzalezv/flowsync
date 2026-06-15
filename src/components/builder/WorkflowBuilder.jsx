@@ -7,7 +7,7 @@ import '@xyflow/react/dist/style.css'
 import NodeSidebar from './NodeSidebar'
 import NodeConfigPanel from './NodeConfigPanel'
 import FlowNode from './nodes/FlowNode'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Layers, X } from 'lucide-react'
 
 const nodeTypes = { start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode, notification: FlowNode, end: FlowNode }
 
@@ -21,6 +21,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(workflow?.nodes || initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(workflow?.edges || [])
   const [selectedNode, setSelectedNode] = useState(null)
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
 
@@ -38,9 +39,10 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
     const bounds = reactFlowWrapper.current.getBoundingClientRect()
     const position = reactFlowInstance.screenToFlowPosition({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
     setNodes(nds => [...nds, { id: `${type}-${++idCounter}`, type, position, data: { label: '', description: '', fields: [] } }])
+    setShowMobileSidebar(false)
   }
 
-  function onNodeClick(_, node) { setSelectedNode(node) }
+  function onNodeClick(_, node) { setSelectedNode(node); setShowMobileSidebar(false) }
   function onPaneClick() { setSelectedNode(null) }
 
   function onNodeDataChange(nodeId, newData) {
@@ -49,10 +51,37 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   }
 
   return (
-    <div className="flex h-full">
-      <NodeSidebar />
+    <div className="flex h-full relative overflow-hidden">
 
-      <div className="flex-1 relative" ref={reactFlowWrapper}>
+      {/* NodeSidebar: always visible on md+, overlay on mobile */}
+      <div className={`
+        hidden md:flex md:static md:z-auto md:shadow-none
+        ${showMobileSidebar ? '!flex absolute inset-y-0 left-0 z-30 shadow-xl' : ''}
+      `}>
+        <NodeSidebar onClose={() => setShowMobileSidebar(false)} showClose={showMobileSidebar} />
+      </div>
+
+      {/* Mobile backdrop for sidebar */}
+      {showMobileSidebar && (
+        <div
+          className="md:hidden absolute inset-0 bg-black/30 z-20"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
+
+      <div className="flex-1 relative min-w-0" ref={reactFlowWrapper}>
+
+        {/* Controls row: top-left mobile toggle, top-right save */}
+        <div className="absolute top-4 left-4 z-10 md:hidden">
+          <button
+            onClick={() => setShowMobileSidebar(s => !s)}
+            className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 shadow-sm"
+          >
+            <Layers className="w-4 h-4 text-blue-800" />
+            Nodos
+          </button>
+        </div>
+
         <div className="absolute top-4 right-4 z-10">
           <button
             onClick={() => onSave({ nodes, edges })}
@@ -80,13 +109,24 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
               const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', notification: '#ea580c', end: '#dc2626' }
               return colors[n.type] || '#94a3b8'
             }}
-            className="!border-slate-200 !shadow-sm"
+            className="!border-slate-200 !shadow-sm hidden sm:block"
           />
         </ReactFlow>
       </div>
 
+      {/* NodeConfigPanel: static on md+, absolute overlay on mobile */}
       {selectedNode && (
-        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
+        <div className="absolute inset-y-0 right-0 z-30 md:static md:z-auto shadow-xl md:shadow-sm">
+          <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} />
+        </div>
+      )}
+
+      {/* Mobile backdrop for config panel */}
+      {selectedNode && (
+        <div
+          className="md:hidden absolute inset-0 bg-black/20 z-20"
+          onClick={() => setSelectedNode(null)}
+        />
       )}
     </div>
   )

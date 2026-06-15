@@ -72,14 +72,14 @@ export default function Dashboard() {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start gap-3 sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">
             Hola, {user?.displayName?.split(' ')[0] || 'bienvenido'}
           </h2>
           <p className="text-slate-500 text-sm mt-1">Resumen de tus flujos y clientes.</p>
         </div>
-        <Link to="/clients" className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors flex-shrink-0">
+        <Link to="/clients" className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors self-start flex-shrink-0">
           <UserPlus className="w-4 h-4" /> Invitar cliente
         </Link>
       </div>
@@ -138,7 +138,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent activity */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900">Actividad reciente</h3>
             <Link to="/clients" className="text-xs text-blue-800 hover:text-blue-900 flex items-center gap-1 font-medium">
               Ver todos <ArrowRight className="w-3 h-3" />
@@ -159,8 +159,8 @@ export default function Dashboard() {
                 const status = STATUS_LABEL[exec.status] || STATUS_LABEL.invited
                 const progress = exec.totalNodes > 0 ? Math.round((exec.completedNodes / exec.totalNodes) * 100) : 0
                 return (
-                  <div key={exec.id} className="px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
-                    <div className="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-blue-800">
+                  <div key={exec.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-blue-800">
                       {exec.clientName?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -168,17 +168,17 @@ export default function Dashboard() {
                         <p className="text-sm font-medium text-slate-900 truncate">{exec.clientName}</p>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <div className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-                          <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+                          <span className={`text-xs font-medium ${status.color} hidden xs:inline`}>{status.label}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[120px]">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[100px] sm:max-w-[120px]">
                           <div className="h-full bg-blue-800 rounded-full transition-all" style={{ width: `${progress}%` }} />
                         </div>
                         <span className="text-xs text-slate-400 flex-shrink-0">{progress}%</span>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right flex-shrink-0 hidden sm:block">
                       <p className="text-xs text-slate-600 truncate max-w-[100px]">{exec.workflowName}</p>
                       {exec.updatedAt && <p className="text-[11px] text-slate-400 mt-0.5">{formatDistanceToNow(exec.updatedAt)}</p>}
                     </div>
