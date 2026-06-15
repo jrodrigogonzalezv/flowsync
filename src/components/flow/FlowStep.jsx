@@ -81,7 +81,7 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
         <button
           type="submit"
           disabled={submitting}
-          className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm"
         >
           {submitting
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</>

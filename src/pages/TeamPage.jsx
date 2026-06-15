@@ -55,14 +55,14 @@ export default function TeamPage() {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Equipo</h2>
           <p className="text-slate-500 text-sm mt-1">{members.length} miembro{members.length !== 1 ? 's' : ''} en tu organización</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
           <span className="hidden sm:block">Invitar miembro</span>
@@ -201,16 +201,16 @@ function InviteMemberModal({ orgId, currentUser, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-xl">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+    <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100">
           <h3 className="text-lg font-semibold text-slate-900">Invitar miembro</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {!inviteLink ? (
             <>
               <div>
