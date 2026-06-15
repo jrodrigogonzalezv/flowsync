@@ -51,7 +51,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   }
 
   return (
-    <div className="flex h-full relative overflow-hidden">
+    <div className="flex h-full relative">
 
       {/* NodeSidebar: hidden on mobile by default, overlay when toggled, always visible on md+ */}
       <div className={showMobileSidebar ? 'flex absolute inset-y-0 left-0 z-30 shadow-xl' : 'hidden md:flex'}>
@@ -101,13 +101,15 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
         >
           <Background variant={BackgroundVariant.Dots} color="#cbd5e1" gap={20} size={1} />
           <Controls className="!border-slate-200 !shadow-sm" />
-          <MiniMap
-            nodeColor={n => {
-              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', notification: '#ea580c', end: '#dc2626' }
-              return colors[n.type] || '#94a3b8'
-            }}
-            className="!border-slate-200 !shadow-sm hidden sm:block"
-          />
+          {window.innerWidth >= 640 && (
+            <MiniMap
+              nodeColor={n => {
+                const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', notification: '#ea580c', end: '#dc2626' }
+                return colors[n.type] || '#94a3b8'
+              }}
+              className="!border-slate-200 !shadow-sm"
+            />
+          )}
         </ReactFlow>
       </div>
 
