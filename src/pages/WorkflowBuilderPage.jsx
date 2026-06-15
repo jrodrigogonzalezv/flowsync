@@ -107,7 +107,7 @@ export default function WorkflowBuilderPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <WorkflowBuilder workflow={workflow} onSave={handleSave} saving={saving} />
       </div>
 
