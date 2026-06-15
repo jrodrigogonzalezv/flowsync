@@ -39,6 +39,7 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
         completedNodes: 0,
         totalNodes: (workflow?.nodes || []).filter(n => n.type !== 'start' && n.type !== 'end').length,
         responses: {},
+        midwayEmailSent: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
