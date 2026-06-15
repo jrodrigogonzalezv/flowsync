@@ -51,7 +51,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   }
 
   return (
-    <div className="flex h-full relative">
+    <div className="absolute inset-0 flex">
 
       {/* NodeSidebar: hidden on mobile by default, overlay when toggled, always visible on md+ */}
       <div className={showMobileSidebar ? 'flex absolute inset-y-0 left-0 z-30 shadow-xl' : 'hidden md:flex'}>
