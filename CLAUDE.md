@@ -4,6 +4,18 @@
 
 ---
 
+## Instrucciones para Claude (leer siempre)
+
+1. **No preguntes lo que ya está aquí.** Este archivo es la fuente de verdad del proyecto. Úsalo antes de explorar archivos.
+2. **Sé conciso.** Respuestas cortas. Sin resúmenes al final de cada mensaje. Sin comentarios obvios en el código.
+3. **Al terminar una sesión con cambios significativos**, actualiza la sección "Estado actual" de este archivo y haz commit+push: `git add CLAUDE.md && git commit -m "docs: actualizar CLAUDE.md" && git push origin main`. Hazlo sin que el usuario lo pida.
+4. **Usa `/compact`** si el contexto se acerca al límite (el usuario puede escribir `/compact` en el chat para comprimir sin perder historial).
+5. **Lee solo los archivos necesarios.** Prefiere Grep/Glob a leer archivos completos. Solo lee el archivo completo si vas a editarlo.
+6. **No regeneres código que ya existe.** Antes de escribir algo, verifica si ya existe con Grep.
+7. **Deploy siempre explícito.** Solo hacer `firebase deploy` si el usuario lo pide. Commit+push siempre juntos.
+
+---
+
 ## ¿Qué es FlowSync?
 
 SaaS multi-tenant de automatización de flujos con IA. Permite:
