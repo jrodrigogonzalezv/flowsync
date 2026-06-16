@@ -63,6 +63,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
     e.preventDefault()
     const type = e.dataTransfer.getData('application/reactflow')
     if (!type || !reactFlowInstance) return
+    if (type === 'start' && nodes.some(n => n.type === 'start')) return
     const bounds = reactFlowWrapper.current.getBoundingClientRect()
     const position = reactFlowInstance.screenToFlowPosition({ x: e.clientX - bounds.left, y: e.clientY - bounds.top })
     const data = type === 'decision'
@@ -73,6 +74,12 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
 
   function onNodeClick(_, node) { setSelectedNode(node) }
   function onPaneClick() { setSelectedNode(null) }
+
+  function onDeleteNode(nodeId) {
+    setNodes(nds => nds.filter(n => n.id !== nodeId))
+    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId))
+    setSelectedNode(null)
+  }
 
   function onNodeDataChange(nodeId, newData) {
     setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: newData } : n))
@@ -85,7 +92,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
 
   return (
     <div className="flex h-full">
-      <NodeSidebar />
+      <NodeSidebar hasStart={nodes.some(n => n.type === 'start')} />
 
       <div className="flex-1 relative" ref={reactFlowWrapper}>
         <div className="absolute top-4 right-4 z-10">
@@ -122,7 +129,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
       </div>
 
       {selectedNode && (
-        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} onDeleteOptionEdge={onDeleteOptionEdge} />
+        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} onDeleteOptionEdge={onDeleteOptionEdge} onDeleteNode={onDeleteNode} />
       )}
     </div>
   )

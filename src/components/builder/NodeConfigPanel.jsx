@@ -15,7 +15,7 @@ const FIELD_TYPES = [
   { value: 'file',        label: 'Archivo' },
 ]
 
-export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptionEdge }) {
+export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptionEdge, onDeleteNode }) {
   const [data, setData] = useState(node.data)
   const config = NODE_TYPES_CONFIG[node.type] || {}
 
@@ -157,6 +157,18 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
         <div className="pt-2 border-t border-slate-100">
           <p className="text-xs text-slate-400">Variables disponibles: <code className="bg-slate-100 px-1 rounded">{'{{clientName}}'}</code> <code className="bg-slate-100 px-1 rounded">{'{{clientEmail}}'}</code></p>
         </div>
+
+        {node.type !== 'start' && (
+          <div className="pt-2 border-t border-red-100">
+            <button
+              onClick={() => onDeleteNode?.(node.id)}
+              className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar módulo
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
