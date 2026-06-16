@@ -289,6 +289,7 @@ export default function ClientFlowPage() {
                 previousResponses={execution?.responses || {}}
                 submitting={submitting}
                 onSubmit={handleSubmit}
+                clientData={{ clientName: execution?.clientName, clientEmail: execution?.clientEmail }}
               />
             : <div className="text-center text-slate-400 py-20">Este flujo no tiene pasos configurados.</div>
           }

@@ -1,16 +1,29 @@
 import { useState } from 'react'
-import { Loader2, ChevronRight } from 'lucide-react'
+import { Loader2, ChevronRight, Star } from 'lucide-react'
 import { NODE_TYPES_CONFIG } from '../builder/nodes/nodeTypes'
 
-export default function FlowStep({ step, stepNumber, totalSteps, submitting, onSubmit }) {
+function resolveVars(text, vars) {
+  if (!text || !vars) return text
+  return text
+    .replace(/\{\{clientName\}\}/g, vars.clientName || '')
+    .replace(/\{\{clientEmail\}\}/g, vars.clientEmail || '')
+}
+
+export default function FlowStep({ step, stepNumber, totalSteps, submitting, onSubmit, clientData }) {
   const [values, setValues] = useState({})
   const [errors, setErrors] = useState({})
   const config = NODE_TYPES_CONFIG[step.type] || {}
 
+  const vars = clientData || {}
+
   function validate() {
     const errs = {}
     for (const field of (step.data.fields || [])) {
-      if (field.required && !values[field.id]?.toString().trim()) {
+      if (!field.required) continue
+      const val = values[field.id]
+      if (field.type === 'multiselect') {
+        if (!val || val.length === 0) errs[field.id] = 'Selecciona al menos una opción'
+      } else if (!val?.toString().trim()) {
         errs[field.id] = 'Este campo es obligatorio'
       }
     }
@@ -29,7 +42,8 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
     if (errors[fieldId]) setErrors(e => ({ ...e, [fieldId]: '' }))
   }
 
-  const inputClass = (hasError) => `w-full border ${hasError ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300 focus:border-blue-800 focus:ring-blue-800/20'} text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-colors placeholder-slate-400 bg-white`
+  const inputClass = (hasError) =>
+    `w-full border ${hasError ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300 focus:border-blue-800 focus:ring-blue-800/20'} text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-colors placeholder-slate-400 bg-white`
 
   return (
     <div>
@@ -40,16 +54,27 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
         </span>
       </div>
 
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">{step.data.label || config.label}</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">
+        {resolveVars(step.data.label || config.label, vars)}
+      </h2>
       {step.data.description && (
-        <p className="text-slate-500 mb-8 leading-relaxed">{step.data.description}</p>
+        <p className="text-slate-500 mb-8 leading-relaxed">
+          {resolveVars(step.data.description, vars)}
+        </p>
       )}
 
       <form onSubmit={handleSubmit}>
         {step.type === 'form' && (
           <div className="space-y-5 mb-8">
             {(step.data.fields || []).map(field => (
-              <FormField key={field.id} field={field} value={values[field.id] || ''} error={errors[field.id]} onChange={v => updateValue(field.id, v)} inputClass={inputClass} />
+              <FormField
+                key={field.id}
+                field={field}
+                value={values[field.id]}
+                error={errors[field.id]}
+                onChange={v => updateValue(field.id, v)}
+                inputClass={inputClass}
+              />
             ))}
             {!step.data.fields?.length && (
               <p className="text-slate-400 text-sm">Este paso no tiene campos configurados.</p>
@@ -60,7 +85,7 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
         {step.type === 'ai' && (
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-6 mb-8">
             <p className="text-violet-700 text-sm leading-relaxed font-medium">
-              {step.data.description || 'La IA analizará tus respuestas anteriores.'}
+              {resolveVars(step.data.description || 'La IA analizará tus respuestas anteriores.', vars)}
             </p>
             <p className="text-violet-400 text-xs mt-2">El análisis puede tomar unos segundos.</p>
           </div>
@@ -68,13 +93,17 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
 
         {step.type === 'condition' && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
-            <p className="text-amber-700 text-sm font-medium">{step.data.condition || 'Se evaluará una condición.'}</p>
+            <p className="text-amber-700 text-sm font-medium">
+              {resolveVars(step.data.condition || 'Se evaluará una condición.', vars)}
+            </p>
           </div>
         )}
 
         {step.type === 'notification' && (
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-8">
-            <p className="text-orange-700 text-sm font-medium">{step.data.message || 'Se enviará una notificación.'}</p>
+            <p className="text-orange-700 text-sm font-medium">
+              {resolveVars(step.data.message || 'Se enviará una notificación.', vars)}
+            </p>
           </div>
         )}
 
@@ -94,6 +123,99 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
 }
 
 function FormField({ field, value, error, onChange, inputClass }) {
+  if (field.type === 'scale') {
+    const max = field.max || 5
+    const labels = field.labels || {}
+    return (
+      <div>
+        <label className="text-sm font-semibold text-slate-700 block mb-3">
+          {field.label}{field.required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        {field.style === 'stars' ? (
+          <div className="flex items-center gap-2">
+            {Array.from({ length: max }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onChange(n)}
+                className="transition-transform hover:scale-110"
+              >
+                <Star
+                  className={`w-8 h-8 transition-colors ${Number(value) >= n ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`}
+                />
+              </button>
+            ))}
+            {value && <span className="text-sm text-slate-500 ml-2">{value} / {max}</span>}
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2">
+              {Array.from({ length: max }, (_, i) => i + 1).map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => onChange(n)}
+                  className={`w-10 h-10 rounded-xl border-2 text-sm font-bold transition-all ${
+                    Number(value) === n
+                      ? 'border-blue-800 bg-blue-800 text-white shadow-sm'
+                      : 'border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-800'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            {(labels[1] || labels[max]) && (
+              <div className="flex items-center justify-between mt-2 px-1">
+                <span className="text-xs text-slate-400">{labels[1] || 'Muy bajo'}</span>
+                <span className="text-xs text-slate-400">{labels[max] || 'Muy alto'}</span>
+              </div>
+            )}
+          </div>
+        )}
+        {error && <p className="text-red-500 text-xs mt-1.5">⚠ {error}</p>}
+      </div>
+    )
+  }
+
+  if (field.type === 'multiselect') {
+    const selected = Array.isArray(value) ? value : []
+    return (
+      <div>
+        <label className="text-sm font-semibold text-slate-700 block mb-2">
+          {field.label}{field.required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <div className="space-y-2">
+          {(field.options || []).map(opt => {
+            const checked = selected.includes(opt)
+            return (
+              <label key={opt} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all ${
+                checked ? 'border-blue-800 bg-blue-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+              }`}>
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  checked ? 'border-blue-800 bg-blue-800' : 'border-slate-300'
+                }`}>
+                  {checked && <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <span className={`text-sm font-medium ${checked ? 'text-blue-900' : 'text-slate-700'}`}>{opt}</span>
+                <input
+                  type="checkbox"
+                  className="hidden"
+                  checked={checked}
+                  onChange={e => {
+                    if (e.target.checked) onChange([...selected, opt])
+                    else onChange(selected.filter(s => s !== opt))
+                  }}
+                />
+              </label>
+            )
+          })}
+        </div>
+        {error && <p className="text-red-500 text-xs mt-1.5">⚠ {error}</p>}
+      </div>
+    )
+  }
+
   return (
     <div>
       <label className="text-sm font-semibold text-slate-700 block mb-1.5">
@@ -102,20 +224,36 @@ function FormField({ field, value, error, onChange, inputClass }) {
       </label>
 
       {field.type === 'textarea' ? (
-        <textarea value={value} onChange={e => onChange(e.target.value)} rows={4}
-          className={`${inputClass(error)} resize-none`} placeholder={`Ingresa ${field.label.toLowerCase()}...`} />
+        <textarea
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          rows={4}
+          className={`${inputClass(error)} resize-none`}
+          placeholder={field.placeholder || `Ingresa ${field.label.toLowerCase()}...`}
+        />
       ) : field.type === 'select' ? (
-        <select value={value} onChange={e => onChange(e.target.value)} className={inputClass(error)}>
+        <select value={value || ''} onChange={e => onChange(e.target.value)} className={inputClass(error)}>
           <option value="">Selecciona una opción</option>
           {(field.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
       ) : field.type === 'date' ? (
-        <input type="date" value={value} onChange={e => onChange(e.target.value)} className={inputClass(error)} />
+        <input type="date" value={value || ''} onChange={e => onChange(e.target.value)} className={inputClass(error)} />
+      ) : field.type === 'phone' ? (
+        <input type="tel" value={value || ''} onChange={e => onChange(e.target.value)} className={inputClass(error)} placeholder={field.placeholder || '+56 9 1234 5678'} />
+      ) : field.type === 'email' ? (
+        <input type="email" value={value || ''} onChange={e => onChange(e.target.value)} className={inputClass(error)} placeholder={field.placeholder || 'tu@email.com'} />
+      ) : field.type === 'number' ? (
+        <input type="number" value={value || ''} onChange={e => onChange(e.target.value)} className={inputClass(error)} placeholder={field.placeholder || '0'} />
       ) : field.type === 'file' ? (
         <input type="file" onChange={e => onChange(e.target.files[0]?.name || '')} className={inputClass(error)} />
       ) : (
-        <input type="text" value={value} onChange={e => onChange(e.target.value)}
-          className={inputClass(error)} placeholder={`Ingresa ${field.label.toLowerCase()}...`} />
+        <input
+          type="text"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          className={inputClass(error)}
+          placeholder={field.placeholder || `Ingresa ${field.label.toLowerCase()}...`}
+        />
       )}
 
       {error && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">⚠ {error}</p>}

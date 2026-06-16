@@ -143,7 +143,7 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
                   <Mail className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-amber-700 text-sm font-medium">Email no enviado</p>
-                    <p className="text-amber-600 text-xs mt-0.5">Comparte el link manualmente. Para habilitar emails configura GMAIL_USER y GMAIL_PASS en Firebase.</p>
+                    <p className="text-amber-600 text-xs mt-0.5">Comparte el link manualmente.</p>
                   </div>
                 </div>
               )}

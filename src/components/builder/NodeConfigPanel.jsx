@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
 import { NODE_TYPES_CONFIG } from './nodes/nodeTypes'
 
+const FIELD_TYPES = [
+  { value: 'text',        label: 'Texto corto' },
+  { value: 'textarea',    label: 'Texto largo' },
+  { value: 'email',       label: 'Email' },
+  { value: 'phone',       label: 'Teléfono' },
+  { value: 'number',      label: 'Número' },
+  { value: 'date',        label: 'Fecha' },
+  { value: 'select',      label: 'Lista desplegable' },
+  { value: 'multiselect', label: 'Selección múltiple' },
+  { value: 'scale',       label: 'Escala / Valoración' },
+  { value: 'file',        label: 'Archivo' },
+]
+
 export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptionEdge }) {
   const [data, setData] = useState(node.data)
   const config = NODE_TYPES_CONFIG[node.type] || {}
@@ -61,7 +74,7 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
         </div>
         <div>
           <label className="text-xs font-medium text-slate-600 block mb-1.5">Descripción</label>
-          <textarea value={data.description || ''} onChange={e => update('description', e.target.value)} rows={2} className={`${inputClass} resize-none`} placeholder="Descripción visible para el cliente" />
+          <textarea value={data.description || ''} onChange={e => update('description', e.target.value)} rows={2} className={`${inputClass} resize-none`} placeholder="Descripción visible para el cliente. Puedes usar {{clientName}}" />
         </div>
 
         {node.type === 'form' && (
@@ -74,30 +87,7 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
             </div>
             <div className="space-y-2">
               {(data.fields || []).map((field, i) => (
-                <div key={field.id} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <input value={field.label} onChange={e => updateField(i, { label: e.target.value })}
-                      className="flex-1 border border-slate-300 text-slate-900 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-800 bg-white"
-                      placeholder="Etiqueta del campo" />
-                    <button onClick={() => removeField(i)} className="text-slate-300 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <select value={field.type} onChange={e => updateField(i, { type: e.target.value })}
-                      className="flex-1 border border-slate-300 text-slate-900 rounded px-2 py-1 text-xs focus:outline-none bg-white">
-                      <option value="text">Texto corto</option>
-                      <option value="textarea">Texto largo</option>
-                      <option value="select">Selección</option>
-                      <option value="file">Archivo</option>
-                      <option value="date">Fecha</option>
-                    </select>
-                    <label className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer">
-                      <input type="checkbox" checked={field.required} onChange={e => updateField(i, { required: e.target.checked })} className="accent-blue-800" />
-                      Req.
-                    </label>
-                  </div>
-                </div>
+                <FieldConfig key={field.id} field={field} index={i} onUpdate={p => updateField(i, p)} onRemove={() => removeField(i)} inputClass={inputClass} />
               ))}
               {!data.fields?.length && <p className="text-xs text-slate-400 text-center py-3">Sin campos — agrega uno</p>}
             </div>
@@ -124,13 +114,13 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
         {node.type === 'notification' && (
           <>
             <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1.5">Asunto</label>
-              <input value={data.subject || ''} onChange={e => update('subject', e.target.value)} className={inputClass} placeholder="Asunto del email" />
+              <label className="text-xs font-medium text-slate-600 block mb-1.5">Asunto del email</label>
+              <input value={data.subject || ''} onChange={e => update('subject', e.target.value)} className={inputClass} placeholder="Ej: Actualización de tu proceso" />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1.5">Mensaje</label>
+              <label className="text-xs font-medium text-slate-600 block mb-1.5">Mensaje al cliente</label>
               <textarea value={data.message || ''} onChange={e => update('message', e.target.value)} rows={4}
-                className={`${inputClass} resize-none`} placeholder="Mensaje a enviar al cliente..." />
+                className={`${inputClass} resize-none`} placeholder="Mensaje a enviar. Puedes usar {{clientName}}" />
             </div>
           </>
         )}
@@ -158,14 +148,133 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
                   </button>
                 </div>
               ))}
-              {!(data.options || []).length && (
-                <p className="text-xs text-slate-400 text-center py-3">Sin opciones — agrega una</p>
-              )}
+              {!(data.options || []).length && <p className="text-xs text-slate-400 text-center py-3">Sin opciones — agrega una</p>}
             </div>
-            <p className="text-xs text-slate-400 mt-2">Cada opción genera un conector. Arrastra desde el punto para enlazar al siguiente paso.</p>
+            <p className="text-xs text-slate-400 mt-2">Cada opción genera un conector desde el nodo.</p>
           </div>
         )}
+
+        <div className="pt-2 border-t border-slate-100">
+          <p className="text-xs text-slate-400">Variables disponibles: <code className="bg-slate-100 px-1 rounded">{'{{clientName}}'}</code> <code className="bg-slate-100 px-1 rounded">{'{{clientEmail}}'}</code></p>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function FieldConfig({ field, onUpdate, onRemove, inputClass }) {
+  const needsOptions = field.type === 'select' || field.type === 'multiselect'
+  const isScale = field.type === 'scale'
+
+  return (
+    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-2">
+      <div className="flex items-center gap-2">
+        <input
+          value={field.label}
+          onChange={e => onUpdate({ label: e.target.value })}
+          className="flex-1 border border-slate-300 text-slate-900 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-800 bg-white"
+          placeholder="Etiqueta del campo"
+        />
+        <button onClick={onRemove} className="text-slate-300 hover:text-red-500 transition-colors flex-shrink-0">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <select
+          value={field.type}
+          onChange={e => onUpdate({ type: e.target.value, options: undefined, max: undefined, style: undefined })}
+          className="flex-1 border border-slate-300 text-slate-900 rounded px-2 py-1 text-xs focus:outline-none bg-white"
+        >
+          {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+        <label className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer flex-shrink-0">
+          <input type="checkbox" checked={field.required || false} onChange={e => onUpdate({ required: e.target.checked })} className="accent-blue-800" />
+          Req.
+        </label>
+      </div>
+
+      {/* Placeholder */}
+      {!needsOptions && !isScale && (
+        <input
+          value={field.placeholder || ''}
+          onChange={e => onUpdate({ placeholder: e.target.value })}
+          className="w-full border border-slate-300 text-slate-900 rounded px-2 py-1 text-xs focus:outline-none bg-white placeholder-slate-400"
+          placeholder="Texto de ayuda (placeholder)"
+        />
+      )}
+
+      {/* Options for select / multiselect */}
+      {needsOptions && (
+        <div className="space-y-1">
+          {(field.options || []).map((opt, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <input
+                value={opt}
+                onChange={e => {
+                  const newOpts = [...(field.options || [])]
+                  newOpts[i] = e.target.value
+                  onUpdate({ options: newOpts })
+                }}
+                className="flex-1 border border-slate-200 text-slate-900 rounded px-2 py-1 text-xs bg-white focus:outline-none"
+                placeholder={`Opción ${i + 1}`}
+              />
+              <button
+                onClick={() => onUpdate({ options: (field.options || []).filter((_, j) => j !== i) })}
+                className="text-slate-300 hover:text-red-500"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => onUpdate({ options: [...(field.options || []), ''] })}
+            className="text-xs text-blue-800 hover:text-blue-900 font-medium flex items-center gap-1 mt-1"
+          >
+            <Plus className="w-3 h-3" /> Agregar opción
+          </button>
+        </div>
+      )}
+
+      {/* Scale config */}
+      {isScale && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500 w-12">Máximo</label>
+            <select
+              value={field.max || 5}
+              onChange={e => onUpdate({ max: Number(e.target.value) })}
+              className="flex-1 border border-slate-200 text-slate-900 rounded px-2 py-1 text-xs bg-white focus:outline-none"
+            >
+              {[5, 7, 10].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <select
+              value={field.style || 'numbers'}
+              onChange={e => onUpdate({ style: e.target.value })}
+              className="flex-1 border border-slate-200 text-slate-900 rounded px-2 py-1 text-xs bg-white focus:outline-none"
+            >
+              <option value="numbers">Números</option>
+              <option value="stars">Estrellas</option>
+            </select>
+          </div>
+          {field.style !== 'stars' && (
+            <div className="flex items-center gap-2">
+              <input
+                value={(field.labels || {})[1] || ''}
+                onChange={e => onUpdate({ labels: { ...(field.labels || {}), 1: e.target.value } })}
+                className="flex-1 border border-slate-200 text-slate-900 rounded px-2 py-1 text-xs bg-white focus:outline-none placeholder-slate-400"
+                placeholder="Etiqueta mín."
+              />
+              <input
+                value={(field.labels || {})[field.max || 5] || ''}
+                onChange={e => onUpdate({ labels: { ...(field.labels || {}), [field.max || 5]: e.target.value } })}
+                className="flex-1 border border-slate-200 text-slate-900 rounded px-2 py-1 text-xs bg-white focus:outline-none placeholder-slate-400"
+                placeholder="Etiqueta máx."
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -15,11 +15,18 @@ const initialNodes = [
   { id: 'start-1', type: 'start', position: { x: 300, y: 80 }, data: { label: 'Inicio' } },
 ]
 
-let idCounter = 1
+function maxIdCounter(nodes) {
+  return nodes.reduce((max, n) => {
+    const num = parseInt(n.id.split('-').pop(), 10)
+    return isNaN(num) ? max : Math.max(max, num)
+  }, 1)
+}
 
 export default function WorkflowBuilder({ workflow, onSave, saving }) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(workflow?.nodes || initialNodes)
+  const startNodes = workflow?.nodes || initialNodes
+  const [nodes, setNodes, onNodesChange] = useNodesState(startNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(workflow?.edges || [])
+  const idCounterRef = useRef(maxIdCounter(startNodes))
   const [selectedNode, setSelectedNode] = useState(null)
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
@@ -40,7 +47,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
     const data = type === 'decision'
       ? { label: '', description: '', options: [] }
       : { label: '', description: '', fields: [] }
-    setNodes(nds => [...nds, { id: `${type}-${++idCounter}`, type, position, data }])
+    setNodes(nds => [...nds, { id: `${type}-${++idCounterRef.current}`, type, position, data }])
   }
 
   function onNodeClick(_, node) { setSelectedNode(node) }
