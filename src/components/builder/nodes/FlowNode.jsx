@@ -1,17 +1,8 @@
-import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react'
-import { useEffect } from 'react'
+import { Handle, Position } from '@xyflow/react'
 import { NODE_TYPES_CONFIG } from './nodeTypes'
 
-export default function FlowNode({ id, data, selected, type }) {
+export default function FlowNode({ data, selected, type }) {
   const config = NODE_TYPES_CONFIG[type] || NODE_TYPES_CONFIG.form
-  const updateNodeInternals = useUpdateNodeInternals()
-
-  useEffect(() => {
-    if (type !== 'decision') return
-    // Defer until after React Flow has committed the new handles to the DOM
-    const timer = setTimeout(() => updateNodeInternals(id), 0)
-    return () => clearTimeout(timer)
-  }, [data.options, id, type, updateNodeInternals])
 
   return (
     <div className={`min-w-[180px] rounded-xl border-2 ${config.border} bg-white shadow-md ${

@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ReactFlow, addEdge, useNodesState, useEdgesState,
   Controls, Background, BackgroundVariant, MiniMap,
+  useUpdateNodeInternals,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import NodeSidebar from './NodeSidebar'
@@ -20,6 +21,26 @@ function maxIdCounter(nodes) {
     const num = parseInt(n.id.split('-').pop(), 10)
     return isNaN(num) ? max : Math.max(max, num)
   }, 1)
+}
+
+// Rendered inside <ReactFlow> so it has valid zustand context
+function DecisionHandleUpdater({ nodes }) {
+  const updateNodeInternals = useUpdateNodeInternals()
+
+  const signature = nodes
+    .filter(n => n.type === 'decision')
+    .map(n => `${n.id}:${(n.data.options || []).map(o => o.id).join(',')}`)
+    .join('|')
+
+  useEffect(() => {
+    nodes
+      .filter(n => n.type === 'decision')
+      .forEach(n => updateNodeInternals(n.id))
+  // signature fully encodes which nodes/options changed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature])
+
+  return null
 }
 
 export default function WorkflowBuilder({ workflow, onSave, saving }) {
@@ -87,6 +108,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
           nodeTypes={nodeTypes} fitView
           defaultEdgeOptions={{ animated: true, style: { stroke: '#1e40af', strokeWidth: 2 } }}
         >
+          <DecisionHandleUpdater nodes={nodes} />
           <Background variant={BackgroundVariant.Dots} color="#cbd5e1" gap={20} size={1} />
           <Controls className="!border-slate-200 !shadow-sm" />
           <MiniMap
