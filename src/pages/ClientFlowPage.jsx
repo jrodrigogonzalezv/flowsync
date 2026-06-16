@@ -246,6 +246,18 @@ export default function ClientFlowPage() {
 
   if (error) return <RecoverLinkScreen />
 
+  if (execution?.archived) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm text-center">
+        <div className="w-14 h-14 bg-slate-100 border-2 border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-5">
+          <Loader2 className="w-7 h-7 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Proceso momentáneamente pausado</h2>
+        <p className="text-slate-500 text-sm leading-relaxed">Tu proceso está temporalmente en pausa. Contáctanos para más información y te ayudaremos a retomarlo.</p>
+      </div>
+    </div>
+  )
+
   if (!profileChecked) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <Loader2 className="w-6 h-6 text-blue-800 animate-spin" />

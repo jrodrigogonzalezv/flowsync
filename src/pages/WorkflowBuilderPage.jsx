@@ -18,6 +18,7 @@ export default function WorkflowBuilderPage() {
   const [kbFiles, setKbFiles] = useState([])
   const [showKB, setShowKB] = useState(false)
   const [showTemplate, setShowTemplate] = useState(false)
+  const [builderKey, setBuilderKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -114,7 +115,7 @@ export default function WorkflowBuilderPage() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <WorkflowBuilder key={id} workflow={workflow} onSave={handleSave} saving={saving} />
+        <WorkflowBuilder key={`${id}-${builderKey}`} workflow={workflow} onSave={handleSave} saving={saving} />
       </div>
 
       {showKB && (
@@ -135,6 +136,7 @@ export default function WorkflowBuilderPage() {
           onSelect={template => {
             setName(template.name || 'Nuevo flujo')
             setWorkflow({ nodes: template.nodes, edges: template.edges })
+            setBuilderKey(k => k + 1)
             setShowTemplate(false)
           }}
           onClose={() => setShowTemplate(false)}
