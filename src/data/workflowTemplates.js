@@ -320,4 +320,404 @@ export const WORKFLOW_TEMPLATES = [
       edge('e8', 'notification-4', 'end-4'),
     ],
   },
+
+  // ── 6. Solicitud de crédito ────────────────────────────────────────────────
+  {
+    id: 'credit-request',
+    name: 'Solicitud de crédito',
+    description: 'Evalúa automáticamente con IA la capacidad de pago del solicitante y deriva según el resultado.',
+    icon: '💳',
+    category: 'IA',
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
+      {
+        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        data: {
+          label: 'Datos personales',
+          description: 'Necesitamos verificar tu identidad antes de continuar.',
+          fields: [
+            { id: 'f1', label: 'Nombre completo', type: 'text', required: true },
+            { id: 'f2', label: 'RUT', type: 'text', required: true, placeholder: '12.345.678-9' },
+            { id: 'f3', label: 'Email', type: 'email', required: true },
+            { id: 'f4', label: 'Teléfono', type: 'phone', required: true },
+            { id: 'f5', label: 'Fecha de nacimiento', type: 'date', required: true },
+          ],
+        },
+      },
+      {
+        id: 'form-2', type: 'form', position: { x: 350, y: 410 },
+        data: {
+          label: 'Información financiera',
+          description: 'Cuéntanos sobre tu situación económica actual.',
+          fields: [
+            { id: 'f6', label: 'Renta mensual líquida', type: 'select', required: true, options: ['Menos de $500.000', '$500.000 - $1.000.000', '$1.000.000 - $2.000.000', '$2.000.000 - $3.500.000', 'Más de $3.500.000'] },
+            { id: 'f7', label: 'Tipo de contrato', type: 'select', required: true, options: ['Indefinido', 'Plazo fijo', 'Honorarios', 'Independiente', 'Sin contrato'] },
+            { id: 'f8', label: 'Antigüedad laboral', type: 'select', required: true, options: ['Menos de 6 meses', '6 a 12 meses', '1 a 3 años', 'Más de 3 años'] },
+            { id: 'f9', label: 'Deudas vigentes', type: 'select', required: true, options: ['Sin deudas', 'Menos del 20% de mi renta', '20% a 40% de mi renta', 'Más del 40% de mi renta'] },
+            { id: 'f10', label: 'Monto solicitado', type: 'select', required: true, options: ['Hasta $1.000.000', '$1.000.000 - $5.000.000', '$5.000.000 - $15.000.000', 'Más de $15.000.000'] },
+          ],
+        },
+      },
+      {
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 640 },
+        data: {
+          label: 'Análisis crediticio',
+          aiPrompt: 'Eres un analista de crédito. Evalúa la solicitud basándote en: renta mensual, tipo y antigüedad de contrato, nivel de endeudamiento actual y monto solicitado. Una relación cuota/ingreso menor al 30% es saludable. Emite una recomendación clara de aprobación, aprobación condicional o rechazo, con justificación breve.',
+        },
+      },
+      {
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 810 },
+        data: { label: '¿Aprobado?', condition: 'El solicitante cumple los requisitos mínimos de capacidad de pago y estabilidad laboral.' },
+      },
+      {
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 990 },
+        data: {
+          label: 'Crédito pre-aprobado',
+          subject: '¡Tu crédito está pre-aprobado, {{clientName}}!',
+          message: 'Hola {{clientName}},\n\nBuenas noticias: tu solicitud de crédito ha sido pre-aprobada. Un ejecutivo se pondrá en contacto contigo en las próximas 24 horas para finalizar el proceso y coordinar la firma de documentos.',
+        },
+      },
+      {
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 990 },
+        data: {
+          label: 'Solicitud no aprobada',
+          subject: 'Resultado de tu solicitud de crédito',
+          message: 'Hola {{clientName}},\n\nHemos revisado tu solicitud y lamentablemente en este momento no cumple los requisitos para ser aprobada. Te invitamos a volver a postular en 6 meses. Si tienes dudas, comunícate con nosotros.',
+        },
+      },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 1160 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 1160 }, data: { label: 'Fin' } },
+    ],
+    edges: [
+      edge('e1', 'start-1', 'form-1'),
+      edge('e2', 'form-1', 'form-2'),
+      edge('e3', 'form-2', 'ai-1'),
+      edge('e4', 'ai-1', 'condition-1'),
+      edge('e5', 'condition-1', 'notification-2', 'yes'),
+      edge('e6', 'condition-1', 'notification-3', 'no'),
+      edge('e7', 'notification-2', 'end-2'),
+      edge('e8', 'notification-3', 'end-3'),
+    ],
+  },
+
+  // ── 7. Diagnóstico y derivación clínica ───────────────────────────────────
+  {
+    id: 'clinical-diagnosis',
+    name: 'Diagnóstico y derivación',
+    description: 'Recoge síntomas y antecedentes del paciente, la IA analiza la urgencia y deriva al especialista correcto.',
+    icon: '🏥',
+    category: 'IA',
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
+      {
+        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        data: {
+          label: 'Datos del paciente',
+          description: 'Ingresa tus datos para comenzar la evaluación.',
+          fields: [
+            { id: 'f1', label: 'Nombre completo', type: 'text', required: true },
+            { id: 'f2', label: 'Edad', type: 'number', required: true },
+            { id: 'f3', label: 'Sexo biológico', type: 'select', required: true, options: ['Masculino', 'Femenino'] },
+            { id: 'f4', label: 'Enfermedades crónicas', type: 'textarea', required: false, placeholder: 'Ej: hipertensión, diabetes, asma... (o escriba ninguna)' },
+            { id: 'f5', label: 'Medicamentos actuales', type: 'textarea', required: false, placeholder: 'Ej: metformina 500mg... (o escriba ninguno)' },
+          ],
+        },
+      },
+      {
+        id: 'form-2', type: 'form', position: { x: 350, y: 420 },
+        data: {
+          label: 'Motivo de consulta',
+          description: 'Describe lo que estás experimentando con el mayor detalle posible.',
+          fields: [
+            { id: 'f6', label: 'Síntoma principal', type: 'textarea', required: true, placeholder: 'Describe tu síntoma principal...' },
+            { id: 'f7', label: '¿Hace cuánto tienes estos síntomas?', type: 'select', required: true, options: ['Menos de 24 horas', '1 a 3 días', '4 a 7 días', 'Más de una semana', 'Más de un mes'] },
+            { id: 'f8', label: 'Intensidad del malestar', type: 'scale', required: true, max: 10, style: 'numbers', labels: { 1: 'Leve', 10: 'Muy intenso' } },
+            { id: 'f9', label: '¿Tienes fiebre?', type: 'select', required: true, options: ['No', 'Sí, menor a 38°C', 'Sí, 38°C o más'] },
+            { id: 'f10', label: 'Síntomas adicionales', type: 'textarea', required: false, placeholder: 'Otros síntomas que notes...' },
+          ],
+        },
+      },
+      {
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 660 },
+        data: {
+          label: 'Análisis clínico',
+          aiPrompt: 'Eres un asistente clínico. Analiza los síntomas, antecedentes y medicamentos del paciente. Evalúa el nivel de urgencia (urgente / moderado / leve) y sugiere la especialidad médica más adecuada para la derivación. No diagnostiques enfermedades, solo orienta sobre urgencia y especialidad. Sé claro y empático.',
+        },
+      },
+      {
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 830 },
+        data: { label: '¿Requiere atención urgente?', condition: 'Los síntomas presentan signos de urgencia como fiebre alta, dolor intenso o síntomas de aparición súbita.' },
+      },
+      {
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 1010 },
+        data: {
+          label: 'Atención urgente',
+          subject: 'Atención requerida — {{clientName}}',
+          message: 'Hola {{clientName}},\n\nSegún tu evaluación, te recomendamos buscar atención médica a la brevedad. Un profesional de nuestra red te contactará en los próximos 30 minutos para coordinar tu atención. Si los síntomas empeoran, dirígete directamente a urgencias.',
+        },
+      },
+      {
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 1010 },
+        data: {
+          label: 'Derivación programada',
+          subject: 'Tu hora médica está siendo gestionada, {{clientName}}',
+          message: 'Hola {{clientName}},\n\nHemos recibido tu evaluación. Un coordinador te contactará en el próximo día hábil para agendar tu hora con el especialista indicado. Recuerda mantener reposo relativo y tomar abundante líquido.',
+        },
+      },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 1180 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 1180 }, data: { label: 'Fin' } },
+    ],
+    edges: [
+      edge('e1', 'start-1', 'form-1'),
+      edge('e2', 'form-1', 'form-2'),
+      edge('e3', 'form-2', 'ai-1'),
+      edge('e4', 'ai-1', 'condition-1'),
+      edge('e5', 'condition-1', 'notification-2', 'yes'),
+      edge('e6', 'condition-1', 'notification-3', 'no'),
+      edge('e7', 'notification-2', 'end-2'),
+      edge('e8', 'notification-3', 'end-3'),
+    ],
+  },
+
+  // ── 8. Proceso de reclamos ─────────────────────────────────────────────────
+  {
+    id: 'complaint-process',
+    name: 'Gestión de reclamos',
+    description: 'El cliente describe su reclamo, lo categoriza y queda derivado al equipo correcto según el tipo.',
+    icon: '📣',
+    category: 'decisión',
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 400, y: 40 }, data: { label: 'Inicio' } },
+      {
+        id: 'form-1', type: 'form', position: { x: 400, y: 190 },
+        data: {
+          label: 'Datos de contacto',
+          description: 'Necesitamos tus datos para hacer seguimiento a tu reclamo.',
+          fields: [
+            { id: 'f1', label: 'Nombre completo', type: 'text', required: true },
+            { id: 'f2', label: 'Email', type: 'email', required: true },
+            { id: 'f3', label: 'Teléfono', type: 'phone', required: false },
+            { id: 'f4', label: 'Número de orden o contrato', type: 'text', required: false, placeholder: 'Si aplica' },
+          ],
+        },
+      },
+      {
+        id: 'form-2', type: 'form', position: { x: 400, y: 400 },
+        data: {
+          label: 'Detalle del reclamo',
+          description: 'Cuéntanos qué ocurrió con el mayor detalle posible.',
+          fields: [
+            { id: 'f5', label: 'Describe el problema', type: 'textarea', required: true, placeholder: '¿Qué ocurrió? ¿Cuándo? ¿Cómo te afectó?' },
+            { id: 'f6', label: '¿Qué solución esperas?', type: 'textarea', required: true, placeholder: 'Ej: reembolso, reposición del producto, disculpa formal...' },
+            { id: 'f7', label: 'Nivel de urgencia', type: 'select', required: true, options: ['Puede esperar', 'Esta semana', 'Hoy mismo'] },
+          ],
+        },
+      },
+      {
+        id: 'decision-1', type: 'decision', position: { x: 400, y: 610 },
+        data: {
+          label: '¿Qué tipo de reclamo es?',
+          description: 'Elige la categoría que mejor describe tu situación.',
+          options: [
+            { id: 'opt-1', label: 'Producto defectuoso' },
+            { id: 'opt-2', label: 'Problema de servicio' },
+            { id: 'opt-3', label: 'Cobro incorrecto' },
+          ],
+        },
+      },
+      {
+        id: 'notification-2', type: 'notification', position: { x: 100, y: 820 },
+        data: {
+          label: 'Reclamo — Producto',
+          subject: 'Recibimos tu reclamo, {{clientName}}',
+          message: 'Hola {{clientName}},\n\nHemos registrado tu reclamo por producto defectuoso. Nuestro equipo de calidad lo revisará y te contactará en un plazo máximo de 48 horas hábiles con una solución. Número de caso: #PROD-' + Date.now().toString().slice(-6),
+        },
+      },
+      {
+        id: 'notification-3', type: 'notification', position: { x: 400, y: 820 },
+        data: {
+          label: 'Reclamo — Servicio',
+          subject: 'Recibimos tu reclamo, {{clientName}}',
+          message: 'Hola {{clientName}},\n\nHemos registrado tu reclamo por falla en el servicio. Un ejecutivo de experiencia al cliente revisará tu caso y se pondrá en contacto contigo en un plazo de 24 horas hábiles.',
+        },
+      },
+      {
+        id: 'notification-4', type: 'notification', position: { x: 700, y: 820 },
+        data: {
+          label: 'Reclamo — Cobro',
+          subject: 'Recibimos tu reclamo, {{clientName}}',
+          message: 'Hola {{clientName}},\n\nHemos registrado tu reclamo por cobro incorrecto. Nuestro equipo de finanzas revisará tu caso con prioridad. Te contactaremos en máximo 24 horas con el detalle de la revisión y, si corresponde, el proceso de devolución.',
+        },
+      },
+      { id: 'end-2', type: 'end', position: { x: 100, y: 990 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 400, y: 990 }, data: { label: 'Fin' } },
+      { id: 'end-4', type: 'end', position: { x: 700, y: 990 }, data: { label: 'Fin' } },
+    ],
+    edges: [
+      edge('e1', 'start-1', 'form-1'),
+      edge('e2', 'form-1', 'form-2'),
+      edge('e3', 'form-2', 'decision-1'),
+      edge('e4', 'decision-1', 'notification-2', 'opt-1'),
+      edge('e5', 'decision-1', 'notification-3', 'opt-2'),
+      edge('e6', 'decision-1', 'notification-4', 'opt-3'),
+      edge('e7', 'notification-2', 'end-2'),
+      edge('e8', 'notification-3', 'end-3'),
+      edge('e9', 'notification-4', 'end-4'),
+    ],
+  },
+
+  // ── 9. Proceso de arriendo inmobiliario ───────────────────────────────────
+  {
+    id: 'rental-process',
+    name: 'Solicitud de arriendo',
+    description: 'Recolecta antecedentes del arrendatario, la IA evalúa su perfil y deriva según la viabilidad.',
+    icon: '🏠',
+    category: 'IA',
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
+      {
+        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        data: {
+          label: 'Datos personales',
+          description: 'Cuéntanos sobre ti para iniciar tu solicitud de arriendo.',
+          fields: [
+            { id: 'f1', label: 'Nombre completo', type: 'text', required: true },
+            { id: 'f2', label: 'RUT', type: 'text', required: true, placeholder: '12.345.678-9' },
+            { id: 'f3', label: 'Email', type: 'email', required: true },
+            { id: 'f4', label: 'Teléfono', type: 'phone', required: true },
+            { id: 'f5', label: 'Número de personas que habitarán', type: 'number', required: true },
+            { id: 'f6', label: '¿Tienes mascotas?', type: 'select', required: true, options: ['No', 'Sí, perro o gato pequeño', 'Sí, perro grande', 'Otras mascotas'] },
+          ],
+        },
+      },
+      {
+        id: 'form-2', type: 'form', position: { x: 350, y: 430 },
+        data: {
+          label: 'Antecedentes financieros',
+          description: 'Esta información es confidencial y solo se usa para evaluar tu solicitud.',
+          fields: [
+            { id: 'f7', label: 'Actividad u ocupación', type: 'select', required: true, options: ['Empleado dependiente', 'Independiente / Honorarios', 'Empresario', 'Jubilado', 'Estudiante con apoyo familiar'] },
+            { id: 'f8', label: 'Renta mensual líquida aproximada', type: 'select', required: true, options: ['Menos de $500.000', '$500.000 - $1.000.000', '$1.000.000 - $2.000.000', '$2.000.000 - $3.500.000', 'Más de $3.500.000'] },
+            { id: 'f9', label: '¿Tienes aval o codeudor disponible?', type: 'select', required: true, options: ['Sí', 'No', 'Podría conseguir uno'] },
+            { id: 'f10', label: '¿Has tenido problemas de pago de arriendos anteriores?', type: 'select', required: true, options: ['No', 'Sí, pero están resueltos', 'Prefiero no responder'] },
+            { id: 'f11', label: '¿Puedes pagar 1 mes de garantía + mes en curso?', type: 'select', required: true, options: ['Sí, sin problema', 'Necesito facilidades', 'No en este momento'] },
+          ],
+        },
+      },
+      {
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 680 },
+        data: {
+          label: 'Evaluación del arrendatario',
+          aiPrompt: 'Eres un analista inmobiliario. Evalúa el perfil del arrendatario considerando: renta (debe ser al menos 3x el valor del arriendo si está disponible), estabilidad laboral, disponibilidad de garantía y aval, y antecedentes de pago. Emite una recomendación de aceptación, aceptación con condiciones o rechazo, con justificación breve y objetiva.',
+        },
+      },
+      {
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 850 },
+        data: { label: '¿Perfil viable?', condition: 'El arrendatario tiene ingresos suficientes, estabilidad laboral y capacidad de pago de garantía.' },
+      },
+      {
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 1030 },
+        data: {
+          label: 'Perfil aprobado',
+          subject: '¡Tu solicitud avanzó, {{clientName}}!',
+          message: 'Hola {{clientName}},\n\nTu perfil ha sido pre-aprobado. Un ejecutivo te contactará en las próximas 24 horas para coordinar la visita a la propiedad y los pasos siguientes del proceso de arriendo.',
+        },
+      },
+      {
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 1030 },
+        data: {
+          label: 'Perfil no aprobado',
+          subject: 'Resultado de tu solicitud de arriendo',
+          message: 'Hola {{clientName}},\n\nLamentablemente, tu perfil no cumple los requisitos mínimos para este arriendo en este momento. Te invitamos a postular con un codeudor o a consultar por propiedades con menor valor de arriendo. Quedamos a tu disposición.',
+        },
+      },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 1200 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 1200 }, data: { label: 'Fin' } },
+    ],
+    edges: [
+      edge('e1', 'start-1', 'form-1'),
+      edge('e2', 'form-1', 'form-2'),
+      edge('e3', 'form-2', 'ai-1'),
+      edge('e4', 'ai-1', 'condition-1'),
+      edge('e5', 'condition-1', 'notification-2', 'yes'),
+      edge('e6', 'condition-1', 'notification-3', 'no'),
+      edge('e7', 'notification-2', 'end-2'),
+      edge('e8', 'notification-3', 'end-3'),
+    ],
+  },
+
+  // ── 10. Inscripción a curso o evento ──────────────────────────────────────
+  {
+    id: 'event-registration',
+    name: 'Inscripción a curso o evento',
+    description: 'Registra asistentes, recolecta preferencias y les envía toda la información necesaria según su elección.',
+    icon: '🎓',
+    category: 'básico',
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 400, y: 40 }, data: { label: 'Inicio' } },
+      {
+        id: 'form-1', type: 'form', position: { x: 400, y: 190 },
+        data: {
+          label: 'Datos del inscrito',
+          description: 'Completa tu inscripción en pocos pasos.',
+          fields: [
+            { id: 'f1', label: 'Nombre completo', type: 'text', required: true },
+            { id: 'f2', label: 'Email', type: 'email', required: true },
+            { id: 'f3', label: 'Teléfono', type: 'phone', required: false },
+            { id: 'f4', label: 'Empresa u organización', type: 'text', required: false },
+            { id: 'f5', label: '¿Cómo te enteraste del evento?', type: 'select', required: false, options: ['Redes sociales', 'Email', 'Recomendación', 'Buscador', 'Otro'] },
+          ],
+        },
+      },
+      {
+        id: 'decision-1', type: 'decision', position: { x: 400, y: 400 },
+        data: {
+          label: '¿Qué modalidad prefieres?',
+          description: 'Elige cómo quieres participar.',
+          options: [
+            { id: 'opt-1', label: 'Presencial' },
+            { id: 'opt-2', label: 'Online en vivo' },
+            { id: 'opt-3', label: 'Grabación posterior' },
+          ],
+        },
+      },
+      {
+        id: 'notification-2', type: 'notification', position: { x: 100, y: 610 },
+        data: {
+          label: 'Confirmación presencial',
+          subject: '¡Inscripción confirmada! — {{clientName}}',
+          message: 'Hola {{clientName}},\n\n¡Tu inscripción presencial está confirmada!\n\n📍 Lugar: [Dirección del evento]\n📅 Fecha: [Fecha]\n🕐 Hora: [Hora]\n\nRecuerda traer tu documento de identidad. Si tienes alguna duda, responde este email.',
+        },
+      },
+      {
+        id: 'notification-3', type: 'notification', position: { x: 400, y: 610 },
+        data: {
+          label: 'Confirmación online',
+          subject: '¡Inscripción confirmada! — {{clientName}}',
+          message: 'Hola {{clientName}},\n\n¡Tu inscripción online está confirmada!\n\n🔗 Link de acceso: [Link de Zoom/Meet]\n📅 Fecha: [Fecha]\n🕐 Hora: [Hora]\n\nTe enviaremos un recordatorio 1 hora antes del inicio. ¡Te esperamos!',
+        },
+      },
+      {
+        id: 'notification-4', type: 'notification', position: { x: 700, y: 610 },
+        data: {
+          label: 'Confirmación grabación',
+          subject: '¡Inscripción confirmada! — {{clientName}}',
+          message: 'Hola {{clientName}},\n\nTu inscripción está confirmada. Recibirás acceso a la grabación del evento dentro de las 48 horas posteriores a su realización.\n\n📅 Evento: [Fecha]\n\nEl link de acceso llegará a este email automáticamente. ¡Gracias por inscribirte!',
+        },
+      },
+      { id: 'end-2', type: 'end', position: { x: 100, y: 780 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 400, y: 780 }, data: { label: 'Fin' } },
+      { id: 'end-4', type: 'end', position: { x: 700, y: 780 }, data: { label: 'Fin' } },
+    ],
+    edges: [
+      edge('e1', 'start-1', 'form-1'),
+      edge('e2', 'form-1', 'decision-1'),
+      edge('e3', 'decision-1', 'notification-2', 'opt-1'),
+      edge('e4', 'decision-1', 'notification-3', 'opt-2'),
+      edge('e5', 'decision-1', 'notification-4', 'opt-3'),
+      edge('e6', 'notification-2', 'end-2'),
+      edge('e7', 'notification-3', 'end-3'),
+      edge('e8', 'notification-4', 'end-4'),
+    ],
+  },
 ]
