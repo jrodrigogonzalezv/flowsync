@@ -8,7 +8,8 @@ import '@xyflow/react/dist/style.css'
 import NodeSidebar from './NodeSidebar'
 import NodeConfigPanel from './NodeConfigPanel'
 import FlowNode from './nodes/FlowNode'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Layers } from 'lucide-react'
+import TemplateModal from './TemplateModal'
 
 const nodeTypes = { start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode, decision: FlowNode, notification: FlowNode, end: FlowNode }
 
@@ -51,6 +52,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
+  const [showTemplates, setShowTemplates] = useState(false)
 
   const onConnect = useCallback(
     params => setEdges(eds => addEdge({ ...params, animated: true, style: { stroke: '#1e40af', strokeWidth: 2 } }, eds)),
@@ -95,7 +97,14 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
       <NodeSidebar hasStart={nodes.some(n => n.type === 'start')} />
 
       <div className="flex-1 relative" ref={reactFlowWrapper}>
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-800 text-sm font-medium px-3.5 py-2 rounded-xl transition-colors shadow-sm"
+          >
+            <Layers className="w-4 h-4" />
+            Plantillas
+          </button>
           <button
             onClick={() => onSave({ nodes, edges })}
             disabled={saving}
@@ -130,6 +139,22 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
 
       {selectedNode && (
         <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} onDeleteOptionEdge={onDeleteOptionEdge} onDeleteNode={onDeleteNode} />
+      )}
+
+      {showTemplates && (
+        <TemplateModal
+          onSelect={template => {
+            setNodes(template.nodes)
+            setEdges(template.edges)
+            idCounterRef.current = template.nodes.reduce((max, n) => {
+              const num = parseInt(n.id.split('-').pop(), 10)
+              return isNaN(num) ? max : Math.max(max, num)
+            }, 1)
+            setSelectedNode(null)
+            setShowTemplates(false)
+          }}
+          onClose={() => setShowTemplates(false)}
+        />
       )}
     </div>
   )

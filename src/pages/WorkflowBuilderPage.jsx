@@ -133,12 +133,11 @@ export default function WorkflowBuilderPage() {
       {showTemplate && (
         <TemplateModal
           onSelect={template => {
-            setName(template.defaultName)
-            if (template.nodes) {
-              setWorkflow({ nodes: template.nodes, edges: template.edges })
-            }
+            setName(template.name || 'Nuevo flujo')
+            setWorkflow({ nodes: template.nodes, edges: template.edges })
             setShowTemplate(false)
           }}
+          onClose={() => setShowTemplate(false)}
         />
       )}
     </div>
