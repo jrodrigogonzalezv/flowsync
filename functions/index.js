@@ -1,8 +1,10 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore')
 const { defineSecret } = require('firebase-functions/params')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const admin = require('firebase-admin')
+const crypto = require('crypto')
 
 if (!admin.apps.length) admin.initializeApp()
 
@@ -31,8 +33,8 @@ async function sendEmail({ to, subject, html, fromName = 'FlowSync' }) {
 // ─── analyzeFlow ─────────────────────────────────────────────────────────────
 
 exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
-  const { responses, aiPrompt, knowledgeBase } = request.data
-  if (!responses || !aiPrompt) throw new HttpsError('invalid-argument', 'Faltan datos para el análisis.')
+  const { responses, formattedResponses: preFormatted, aiPrompt, knowledgeBase } = request.data
+  if (!aiPrompt) throw new HttpsError('invalid-argument', 'Faltan datos para el análisis.')
 
   const genAI = new GoogleGenerativeAI(geminiApiKey.value())
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
@@ -43,12 +45,32 @@ exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
     '\n\nResponde siempre en español. Sé claro, conciso y útil para el cliente.',
   ].join('')
 
-  const formattedResponses = Object.entries(responses)
-    .map(([, data]) => Object.entries(data).map(([k, v]) => `- ${k}: ${v}`).join('\n'))
+  const formattedResponses = preFormatted || Object.entries(responses || {})
+    .map(([, data]) => Object.entries(data || {}).map(([k, v]) => `- ${k}: ${v}`).join('\n'))
     .join('\n\n')
 
   const result = await model.generateContent(`${systemPrompt}\n\nRespuestas del cliente:\n\n${formattedResponses}`)
   return { result: result.response.text() }
+})
+
+// ─── notifyClient — envía email al cliente desde un nodo Notificación ─────────
+
+exports.notifyClient = onCall({ secrets: [resendApiKey] }, async (request) => {
+  const { clientEmail, clientName, subject, message } = request.data
+  if (!clientEmail) throw new HttpsError('invalid-argument', 'Falta el email del cliente.')
+
+  await sendEmail({
+    to: clientEmail,
+    subject: subject || 'Actualización de tu proceso',
+    html: buildEmailHtml({
+      title: subject || 'Actualización de tu proceso',
+      name: clientName || 'Cliente',
+      body: message || 'Tienes una actualización en tu proceso.',
+      cta: null,
+      link: null,
+    }),
+  })
+  return { sent: true }
 })
 
 // ─── extractKnowledgeBaseFile ─────────────────────────────────────────────────
@@ -261,6 +283,100 @@ exports.sendMidwayReminder = onSchedule(
     await batch.commit()
   }
 )
+
+// ─── onExecutionComplete — webhook + conversion tracking ─────────────────────
+
+async function sendWebhookWithRetry(url, payload, secret, maxRetries = 3) {
+  const body = JSON.stringify(payload)
+  const signature = secret
+    ? 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex')
+    : null
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-FlowSync-Event': payload.event,
+    'X-FlowSync-Delivery': payload.deliveryId,
+    ...(signature ? { 'X-FlowSync-Signature': signature } : {}),
+  }
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(10000) })
+      if (res.ok) return { ok: true, status: res.status }
+      if (res.status < 500) return { ok: false, status: res.status } // 4xx: no retry
+    } catch (e) {
+      if (attempt === maxRetries - 1) throw e
+    }
+    await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt))) // 1s, 2s, 4s
+  }
+  return { ok: false }
+}
+
+exports.onExecutionComplete = onDocumentUpdated('executions/{executionId}', async event => {
+  const before = event.data.before.data()
+  const after  = event.data.after.data()
+  const db = admin.firestore()
+
+  // Notification: flow completed
+  if (before.status !== 'completed' && after.status === 'completed') {
+    await db.collection('notifications').add({
+      orgId: after.orgId,
+      type: 'flow_completed',
+      clientName: after.clientName || '',
+      workflowName: after.workflowName || '',
+      executionId: event.params.executionId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => console.error('Notification error:', e.message))
+  }
+
+  // Notification: support requested
+  if (!before.humanSupportRequested && after.humanSupportRequested) {
+    await db.collection('notifications').add({
+      orgId: after.orgId,
+      type: 'support_requested',
+      clientName: after.clientName || '',
+      workflowName: after.workflowName || '',
+      executionId: event.params.executionId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => console.error('Notification error:', e.message))
+  }
+
+  // Webhook: only on completion
+  if (before.status === 'completed' || after.status !== 'completed') return
+
+  const orgSnap = await db.doc(`organizations/${after.orgId}`).get()
+  const org = orgSnap.data() || {}
+
+  if (!org.webhookUrl) return
+
+  const deliveryId = crypto.randomUUID()
+  const payload = {
+    event: 'flow.completed',
+    deliveryId,
+    timestamp: new Date().toISOString(),
+    execution: {
+      id: event.params.executionId,
+      clientName:       after.clientName,
+      clientEmail:      after.clientEmail,
+      workflowId:       after.workflowId,
+      workflowName:     after.workflowName,
+      orgId:            after.orgId,
+      responses:        after.responses        || {},
+      navigationHistory: after.navigationHistory || [],
+      utmParams:        after.utmParams         || {},
+      startedAt:  after.createdAt?.toDate?.()?.toISOString()  ?? null,
+      completedAt: after.updatedAt?.toDate?.()?.toISOString() ?? null,
+    },
+  }
+
+  try {
+    const result = await sendWebhookWithRetry(org.webhookUrl, payload, org.webhookSecret || null)
+    console.log(`Webhook ${deliveryId}: ${result.ok ? 'ok' : 'failed'} (${result.status ?? 'timeout'})`)
+  } catch (e) {
+    console.error(`Webhook ${deliveryId} error after retries:`, e.message)
+  }
+})
 
 // ─── Email template ───────────────────────────────────────────────────────────
 

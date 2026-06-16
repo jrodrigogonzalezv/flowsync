@@ -5,6 +5,7 @@ import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import WorkflowBuilder from '../components/builder/WorkflowBuilder'
 import KnowledgeBaseModal from '../components/kb/KnowledgeBaseModal'
+import TemplateModal from '../components/builder/TemplateModal'
 import { ArrowLeft, Loader2, BookOpen, Save } from 'lucide-react'
 
 export default function WorkflowBuilderPage() {
@@ -16,6 +17,7 @@ export default function WorkflowBuilderPage() {
   const [knowledgeBase, setKnowledgeBase] = useState('')
   const [kbFiles, setKbFiles] = useState([])
   const [showKB, setShowKB] = useState(false)
+  const [showTemplate, setShowTemplate] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -26,17 +28,21 @@ export default function WorkflowBuilderPage() {
   const workflowFolder = isNew ? tempWorkflowId : id
 
   useEffect(() => {
-    if (isNew) { setLoading(false); return }
-    getDoc(doc(db, 'workflows', id)).then(snap => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setWorkflow(data)
-        setName(data.name || 'Flujo sin nombre')
-        setKnowledgeBase(data.knowledgeBase || '')
-        setKbFiles(data.knowledgeBaseFiles || [])
-      }
-      setLoading(false)
-    })
+    setLoading(true)
+    setWorkflow(null)
+    if (isNew) { setShowTemplate(true); setLoading(false); return }
+    getDoc(doc(db, 'workflows', id))
+      .then(snap => {
+        if (snap.exists()) {
+          const data = snap.data()
+          setWorkflow(data)
+          setName(data.name || 'Flujo sin nombre')
+          setKnowledgeBase(data.knowledgeBase || '')
+          setKbFiles(data.knowledgeBaseFiles || [])
+        }
+      })
+      .catch(err => console.error('Error al cargar flujo:', err))
+      .finally(() => setLoading(false))
   }, [id])
 
   async function handleSave({ nodes, edges }) {
@@ -108,7 +114,7 @@ export default function WorkflowBuilderPage() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <WorkflowBuilder workflow={workflow} onSave={handleSave} saving={saving} />
+        <WorkflowBuilder key={id} workflow={workflow} onSave={handleSave} saving={saving} />
       </div>
 
       {showKB && (
@@ -121,6 +127,18 @@ export default function WorkflowBuilderPage() {
           userId={user.uid}
           workflowFolder={workflowFolder}
           onClose={() => setShowKB(false)}
+        />
+      )}
+
+      {showTemplate && (
+        <TemplateModal
+          onSelect={template => {
+            setName(template.defaultName)
+            if (template.nodes) {
+              setWorkflow({ nodes: template.nodes, edges: template.edges })
+            }
+            setShowTemplate(false)
+          }}
         />
       )}
     </div>

@@ -9,6 +9,9 @@ import ClientsPage from './pages/ClientsPage'
 import ClientFlowPage from './pages/ClientFlowPage'
 import TeamPage from './pages/TeamPage'
 import JoinPage from './pages/JoinPage'
+import ProfilePage from './pages/ProfilePage'
+import SettingsPage from './pages/SettingsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -45,6 +48,9 @@ function AppRoutes() {
                 <Route path="/workflows/:id" element={<AdminRoute><WorkflowBuilderPage /></AdminRoute>} />
                 <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/team" element={<AdminRoute><TeamPage /></AdminRoute>} />
+                <Route path="/analytics" element={<AdminRoute><AnalyticsPage /></AdminRoute>} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </AppLayout>
