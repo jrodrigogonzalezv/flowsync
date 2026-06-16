@@ -1,8 +1,14 @@
-import { Handle, Position } from '@xyflow/react'
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react'
+import { useEffect } from 'react'
 import { NODE_TYPES_CONFIG } from './nodeTypes'
 
-export default function FlowNode({ data, selected, type }) {
+export default function FlowNode({ id, data, selected, type }) {
   const config = NODE_TYPES_CONFIG[type] || NODE_TYPES_CONFIG.form
+  const updateNodeInternals = useUpdateNodeInternals()
+
+  useEffect(() => {
+    if (type === 'decision') updateNodeInternals(id)
+  }, [data.options, id, type, updateNodeInternals])
 
   return (
     <div className={`min-w-[180px] rounded-xl border-2 ${config.border} bg-white shadow-md ${
