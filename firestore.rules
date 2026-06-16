@@ -46,6 +46,11 @@ service cloud.firestore {
       allow delete: if isAdmin() && resource.data.userId == request.auth.uid;
     }
 
+    match /notifications/{notifId} {
+      allow read, update: if isAuth() && sameOrg(resource.data.orgId);
+      allow create, delete: if false;
+    }
+
     match /executions/{executionId} {
       // execution ID is the access token — clients read and update without auth
       allow read: if true;

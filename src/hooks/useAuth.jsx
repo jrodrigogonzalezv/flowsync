@@ -53,6 +53,14 @@ export function AuthProvider({ children }) {
     await signOut(auth)
   }
 
+  async function refreshProfile() {
+    const fbUser = auth.currentUser
+    if (!fbUser) return
+    await fbUser.reload()
+    const snap = await getDoc(doc(db, 'users', auth.currentUser.uid))
+    setUser({ ...auth.currentUser, profile: snap.data() || {} })
+  }
+
   async function claimInvite(inviteId) {
     if (!user) throw new Error('Debes iniciar sesión primero')
     const inviteRef = doc(db, 'invites', inviteId)
@@ -113,7 +121,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithEmail, registerWithEmail, logout, claimInvite }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithEmail, registerWithEmail, logout, claimInvite, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

@@ -260,11 +260,37 @@ async function sendWebhookWithRetry(url, payload, secret, maxRetries = 3) {
 exports.onExecutionComplete = onDocumentUpdated('executions/{executionId}', async event => {
   const before = event.data.before.data()
   const after  = event.data.after.data()
+  const db = admin.firestore()
 
-  // Only fire on the transition to 'completed'
+  // Notification: flow completed
+  if (before.status !== 'completed' && after.status === 'completed') {
+    await db.collection('notifications').add({
+      orgId: after.orgId,
+      type: 'flow_completed',
+      clientName: after.clientName || '',
+      workflowName: after.workflowName || '',
+      executionId: event.params.executionId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => console.error('Notification error:', e.message))
+  }
+
+  // Notification: support requested
+  if (!before.humanSupportRequested && after.humanSupportRequested) {
+    await db.collection('notifications').add({
+      orgId: after.orgId,
+      type: 'support_requested',
+      clientName: after.clientName || '',
+      workflowName: after.workflowName || '',
+      executionId: event.params.executionId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => console.error('Notification error:', e.message))
+  }
+
+  // Webhook: only on completion
   if (before.status === 'completed' || after.status !== 'completed') return
 
-  const db = admin.firestore()
   const orgSnap = await db.doc(`organizations/${after.orgId}`).get()
   const org = orgSnap.data() || {}
 
