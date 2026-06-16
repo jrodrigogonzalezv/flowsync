@@ -18,6 +18,7 @@ export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [clientProfiles, setClientProfiles] = useState({})
+  const [activeWorkflowIds, setActiveWorkflowIds] = useState(null)
 
   useEffect(() => {
     const orgId = user.profile?.orgId || user.uid
@@ -46,15 +47,25 @@ export default function ClientsPage() {
     }, () => {})
   }, [])
 
+  useEffect(() => {
+    const orgId = user.profile?.orgId || user.uid
+    const q = query(collection(db, 'workflows'), where('orgId', '==', orgId))
+    return onSnapshot(q, snap => {
+      setActiveWorkflowIds(new Set(snap.docs.map(d => d.id)))
+    }, () => { setActiveWorkflowIds(new Set()) })
+  }, [])
+
   const availableWorkflows = useMemo(() => {
     const seen = new Map()
     executions.forEach(e => {
       if (e.workflowId && e.workflowName && !seen.has(e.workflowId)) {
-        seen.set(e.workflowId, e.workflowName)
+        if (!activeWorkflowIds || activeWorkflowIds.has(e.workflowId)) {
+          seen.set(e.workflowId, e.workflowName)
+        }
       }
     })
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
-  }, [executions])
+  }, [executions, activeWorkflowIds])
 
   const archivedCount = useMemo(() => executions.filter(e => e.archived).length, [executions])
 
