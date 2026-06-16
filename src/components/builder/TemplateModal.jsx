@@ -28,6 +28,22 @@ export default function TemplateModal({ onSelect, onClose }) {
         </div>
 
         <div className="overflow-y-auto flex-1 p-6">
+          {/* Blank option */}
+          <button
+            onClick={() => onSelect({ id: 'blank', name: '', nodes: [{ id: 'start-1', type: 'start', position: { x: 300, y: 80 }, data: { label: 'Inicio' } }], edges: [] })}
+            className="w-full text-left p-4 mb-4 border-2 border-dashed border-slate-300 rounded-2xl hover:border-blue-400 hover:bg-blue-50/40 transition-all group flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-blue-100 group-hover:border-blue-200 group-hover:text-blue-600 transition-colors flex-shrink-0 text-xl">
+              +
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-800 transition-colors">Flujo en blanco</p>
+              <p className="text-xs text-slate-400">Empieza desde cero con solo el nodo de inicio.</p>
+            </div>
+          </button>
+
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">O elige una plantilla</p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {WORKFLOW_TEMPLATES.map(template => {
               const usedTypes = [...new Set(template.nodes.map(n => n.type))]
