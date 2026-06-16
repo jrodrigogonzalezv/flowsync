@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import KanbanBoard from '../components/kanban/KanbanBoard'
 import InviteClientModal from '../components/kanban/InviteClientModal'
 import OperatorChatPanel from '../components/chat/OperatorChatPanel'
-import { UserPlus, Loader2, Download, Search, X, ChevronDown } from 'lucide-react'
+import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Briefcase } from 'lucide-react'
 
 export default function ClientsPage() {
   const { user } = useAuth()
@@ -15,6 +15,7 @@ export default function ClientsPage() {
   const [selectedExec, setSelectedExec] = useState(null)
   const [filterWorkflowId, setFilterWorkflowId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [clientProfiles, setClientProfiles] = useState({})
 
   useEffect(() => {
     const orgId = user.profile?.orgId || user.uid
@@ -31,6 +32,16 @@ export default function ClientsPage() {
       }
     )
     return unsub
+  }, [])
+
+  useEffect(() => {
+    const orgId = user.profile?.orgId || user.uid
+    const q = query(collection(db, 'clients'), where('orgId', '==', orgId))
+    return onSnapshot(q, snap => {
+      const map = {}
+      snap.docs.forEach(d => { const data = d.data(); map[data.email] = { id: d.id, ...data } })
+      setClientProfiles(map)
+    }, () => {})
   }, [])
 
   const availableWorkflows = useMemo(() => {
@@ -152,7 +163,7 @@ export default function ClientsPage() {
         </div>
       ) : (
         <div className="flex-1 overflow-x-auto overflow-y-hidden px-4 sm:px-6 lg:px-8 py-6">
-          <KanbanBoard executions={filteredExecutions} onCardClick={setSelectedExec} />
+          <KanbanBoard executions={filteredExecutions} onCardClick={setSelectedExec} clientProfiles={clientProfiles} />
         </div>
       )}
 
@@ -163,7 +174,7 @@ export default function ClientsPage() {
       {selectedExec && selectedExec.humanSupportRequested && selectedExec.status !== 'completed' ? (
         <OperatorChatPanel execution={selectedExec} onClose={() => setSelectedExec(null)} />
       ) : selectedExec ? (
-        <ExecutionDetailModal execution={selectedExec} onClose={() => setSelectedExec(null)} />
+        <ExecutionDetailModal execution={selectedExec} clientProfile={clientProfiles[selectedExec.clientEmail]} onClose={() => setSelectedExec(null)} />
       ) : null}
     </div>
   )
@@ -171,7 +182,7 @@ export default function ClientsPage() {
 
 // ── ExecutionDetailModal ───────────────────────────────────────────────────────
 
-function ExecutionDetailModal({ execution, onClose }) {
+function ExecutionDetailModal({ execution, clientProfile, onClose }) {
   const [workflow, setWorkflow] = useState(null)
 
   useEffect(() => {
@@ -211,9 +222,17 @@ function ExecutionDetailModal({ execution, onClose }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 flex-shrink-0">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">{execution.clientName}</h3>
-            <p className="text-slate-500 text-sm">{execution.clientEmail}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-500 flex-shrink-0">
+              {clientProfile?.photoUrl
+                ? <img src={clientProfile.photoUrl} alt="" className="w-full h-full object-cover" />
+                : (execution.clientName || 'C')[0].toUpperCase()
+              }
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">{execution.clientName}</h3>
+              <p className="text-slate-500 text-sm">{execution.clientEmail}</p>
+            </div>
           </div>
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusColor}`}>
             {statusLabel}
@@ -222,6 +241,67 @@ function ExecutionDetailModal({ execution, onClose }) {
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          {/* Client profile */}
+          {clientProfile ? (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                {clientProfile.type === 'juridica'
+                  ? <><Building2 className="w-3.5 h-3.5 text-indigo-500" /><span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Empresa</span></>
+                  : <><User className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Persona natural</span></>
+                }
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2.5">
+                {clientProfile.type === 'juridica' && clientProfile.companyName && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Empresa</span>
+                    <span className="text-slate-900 font-medium text-right">{clientProfile.companyName}</span>
+                  </div>
+                )}
+                {clientProfile.type === 'juridica' && clientProfile.companyRut && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">RUT empresa</span>
+                    <span className="text-slate-900 font-medium">{clientProfile.companyRut}</span>
+                  </div>
+                )}
+                {clientProfile.type === 'juridica' && clientProfile.industry && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Rubro</span>
+                    <span className="text-slate-900 font-medium">{clientProfile.industry}</span>
+                  </div>
+                )}
+                {clientProfile.type === 'juridica' && clientProfile.position && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Cargo</span>
+                    <span className="text-slate-900 font-medium">{clientProfile.position}</span>
+                  </div>
+                )}
+                {clientProfile.rut && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">RUT</span>
+                    <span className="text-slate-900 font-medium">{clientProfile.rut}</span>
+                  </div>
+                )}
+                {clientProfile.phone && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" /> Teléfono</span>
+                    <a href={`tel:${clientProfile.phone}`} className="text-blue-800 font-medium hover:underline">{clientProfile.phone}</a>
+                  </div>
+                )}
+                {clientProfile.address && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> Ciudad</span>
+                    <span className="text-slate-900 font-medium">{clientProfile.address}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center gap-2">
+              <User className="w-4 h-4 text-slate-300" />
+              <span className="text-xs text-slate-400">El cliente aún no ha completado su perfil.</span>
+            </div>
+          )}
+
           {/* Meta */}
           <div className="grid grid-cols-2 gap-3">
             {[

@@ -51,6 +51,13 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    match /clients/{clientId} {
+      // unauthenticated clients write their own profile from public flow page
+      allow read: if isAuth() && sameOrg(resource.data.orgId);
+      allow create, update: if true;
+      allow delete: if isAdmin() && sameOrg(resource.data.orgId);
+    }
+
     match /executions/{executionId} {
       // execution ID is the access token — clients read and update without auth
       allow read: if true;
