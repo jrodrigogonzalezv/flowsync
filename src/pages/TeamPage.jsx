@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, onSnapshot, doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, setDoc, getDoc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
-import { UserPlus, Trash2, Loader2, Shield, Clock, Copy, Check, X, Mail } from 'lucide-react'
+import { UserPlus, Trash2, Loader2, Shield, Clock, Copy, Check, X, Mail, Webhook, Eye, EyeOff, RefreshCw } from 'lucide-react'
+
+function generateSecret() {
+  const arr = new Uint8Array(32)
+  window.crypto.getRandomValues(arr)
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('')
+}
 
 const ROLES = [
   { value: 'admin', label: 'Admin', description: 'Acceso total: crear flujos, ver todo, gestionar equipo' },
@@ -134,6 +140,8 @@ export default function TeamPage() {
         </div>
       )}
 
+      <WebhookSection orgId={orgId} />
+
       {showModal && (
         <InviteMemberModal
           orgId={orgId}
@@ -144,6 +152,145 @@ export default function TeamPage() {
     </div>
   )
 }
+
+// ── WebhookSection ────────────────────────────────────────────────────────────
+
+function WebhookSection({ orgId }) {
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [showSecret, setShowSecret] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [copiedUrl, setCopiedUrl] = useState(false)
+  const [copiedSecret, setCopiedSecret] = useState(false)
+
+  useEffect(() => {
+    if (!orgId) return
+    getDoc(doc(db, 'organizations', orgId))
+      .then(snap => {
+        if (snap.exists()) {
+          setWebhookUrl(snap.data().webhookUrl || '')
+          setWebhookSecret(snap.data().webhookSecret || '')
+        }
+      })
+      .catch(() => {})
+  }, [orgId])
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await updateDoc(doc(db, 'organizations', orgId), {
+        webhookUrl: webhookUrl.trim(),
+        webhookSecret: webhookSecret.trim(),
+        updatedAt: serverTimestamp(),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      // If org doc doesn't exist yet, create it
+      try {
+        await setDoc(doc(db, 'organizations', orgId), {
+          webhookUrl: webhookUrl.trim(),
+          webhookSecret: webhookSecret.trim(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true })
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } catch (e2) {
+        console.error('Error saving webhook:', e2)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function copy(text, setter) {
+    navigator.clipboard.writeText(text)
+    setter(true)
+    setTimeout(() => setter(false), 2000)
+  }
+
+  return (
+    <div className="mt-6 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+        <Webhook className="w-4 h-4 text-slate-500" />
+        <h3 className="text-sm font-semibold text-slate-700">Webhook</h3>
+        <span className="ml-auto text-xs text-slate-400">Se dispara al completar un flujo</span>
+      </div>
+      <div className="p-5 space-y-4">
+        <div>
+          <label className="text-xs font-medium text-slate-600 block mb-1.5">URL del endpoint</label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              placeholder="https://tu-sistema.com/webhook"
+              value={webhookUrl}
+              onChange={e => setWebhookUrl(e.target.value)}
+              className="flex-1 border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400"
+            />
+            {webhookUrl && (
+              <button
+                onClick={() => copy(webhookUrl, setCopiedUrl)}
+                className="p-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                {copiedUrl ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-slate-600 block mb-1.5">Secret (para verificar firma HMAC-SHA256)</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showSecret ? 'text' : 'password'}
+                placeholder="Opcional"
+                value={webhookSecret}
+                onChange={e => setWebhookSecret(e.target.value)}
+                className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecret(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <button
+              onClick={() => setWebhookSecret(generateSecret())}
+              className="p-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"
+              title="Generar secret aleatorio"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            {webhookSecret && (
+              <button
+                onClick={() => copy(webhookSecret, setCopiedSecret)}
+                className="p-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                {copiedSecret ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-slate-400 mt-1.5">La firma se envía en el header <code className="bg-slate-100 px-1 rounded">X-FlowSync-Signature</code></p>
+        </div>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-50 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          >
+            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : 'Guardar webhook'}
+          </button>
+          {saved && <span className="text-emerald-600 text-sm font-medium">Guardado</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── InviteMemberModal ─────────────────────────────────────────────────────────
 
 function InviteMemberModal({ orgId, currentUser, onClose }) {
   const [email, setEmail] = useState('')
