@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { Link } from 'react-router-dom'
-import { Plus, GitBranch, Loader2, Trash2, UserPlus, ArrowRight } from 'lucide-react'
+import { Plus, GitBranch, Loader2, Trash2, UserPlus, ArrowRight, Copy } from 'lucide-react'
 import { formatDistanceToNow } from '../components/utils/date'
 import InviteClientModal from '../components/kanban/InviteClientModal'
 
@@ -16,10 +16,17 @@ export default function WorkflowsPage() {
   useEffect(() => {
     const orgId = user.profile?.orgId || user.uid
     const q = query(collection(db, 'workflows'), where('userId', '==', orgId))
-    const unsub = onSnapshot(q, snap => {
-      setWorkflows(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    })
+    const unsub = onSnapshot(
+      q,
+      snap => {
+        setWorkflows(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        setLoading(false)
+      },
+      err => {
+        console.error('Error al cargar flujos:', err)
+        setLoading(false)
+      }
+    )
     return unsub
   }, [])
 
@@ -27,6 +34,23 @@ export default function WorkflowsPage() {
     e.preventDefault()
     if (!confirm('¿Eliminar este flujo?')) return
     await deleteDoc(doc(db, 'workflows', id))
+  }
+
+  async function handleDuplicate(e, w) {
+    e.preventDefault()
+    const orgId = user.profile?.orgId || user.uid
+    const newRef = doc(collection(db, 'workflows'))
+    await setDoc(newRef, {
+      name: `${w.name || 'Sin nombre'} (copia)`,
+      userId: orgId,
+      orgId,
+      nodes: w.nodes || [],
+      edges: w.edges || [],
+      knowledgeBase: w.knowledgeBase || '',
+      knowledgeBaseFiles: w.knowledgeBaseFiles || [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
   }
 
   return (
@@ -67,12 +91,22 @@ export default function WorkflowsPage() {
                 <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                   <GitBranch className="w-5 h-5 text-blue-800" />
                 </div>
-                <button
-                  onClick={e => handleDelete(e, w.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={e => handleDuplicate(e, w)}
+                    className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-700 transition-all"
+                    title="Duplicar flujo"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={e => handleDelete(e, w.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all"
+                    title="Eliminar flujo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               <Link to={`/workflows/${w.id}`} className="flex-1 min-w-0">
