@@ -19,12 +19,19 @@ export default function KanbanCard({ execution, onClick, clientProfile }) {
     <div
       onClick={onClick}
       className={`relative bg-white border rounded-xl p-4 cursor-pointer transition-all
-        ${needsSupport
+        ${execution.archived
+          ? 'border-slate-200 opacity-60 hover:opacity-80'
+          : needsSupport
           ? 'border-red-400 ring-2 ring-red-400/30 hover:shadow-lg hover:shadow-red-100'
           : 'border-slate-200 hover:shadow-md hover:border-slate-300'
         }`}
     >
-      {needsSupport && (
+      {execution.archived && (
+        <div className="absolute -top-1.5 -right-1.5 bg-slate-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+          ARCHIVADO
+        </div>
+      )}
+      {!execution.archived && needsSupport && (
         <div className="absolute -top-1.5 -right-1.5 flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md animate-pulse">
           <MessageCircle className="w-2.5 h-2.5" />
           AYUDA

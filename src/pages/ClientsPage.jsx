@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import KanbanBoard from '../components/kanban/KanbanBoard'
 import InviteClientModal from '../components/kanban/InviteClientModal'
 import OperatorChatPanel from '../components/chat/OperatorChatPanel'
-import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Briefcase } from 'lucide-react'
+import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle } from 'lucide-react'
+import { deleteDoc, updateDoc } from 'firebase/firestore'
 
 export default function ClientsPage() {
   const { user } = useAuth()
@@ -15,6 +16,7 @@ export default function ClientsPage() {
   const [selectedExec, setSelectedExec] = useState(null)
   const [filterWorkflowId, setFilterWorkflowId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const [clientProfiles, setClientProfiles] = useState({})
 
   useEffect(() => {
@@ -54,8 +56,12 @@ export default function ClientsPage() {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
   }, [executions])
 
+  const archivedCount = useMemo(() => executions.filter(e => e.archived).length, [executions])
+
   const filteredExecutions = useMemo(() => {
     return executions.filter(e => {
+      if (!showArchived && e.archived) return false
+      if (showArchived && !e.archived) return false
       const matchWorkflow = !filterWorkflowId || e.workflowId === filterWorkflowId
       const q = searchQuery.toLowerCase()
       const matchSearch = !q ||
@@ -63,7 +69,7 @@ export default function ClientsPage() {
         (e.clientEmail || '').toLowerCase().includes(q)
       return matchWorkflow && matchSearch
     })
-  }, [executions, filterWorkflowId, searchQuery])
+  }, [executions, filterWorkflowId, searchQuery, showArchived])
 
   function exportCSV() {
     const rows = filteredExecutions.map(e => ({
@@ -146,6 +152,17 @@ export default function ClientsPage() {
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           </div>
+          <button
+            onClick={() => { setShowArchived(a => !a); setFilterWorkflowId(''); setSearchQuery('') }}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl border transition-colors ${
+              showArchived
+                ? 'bg-slate-700 text-white border-slate-700'
+                : 'text-slate-500 hover:text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Archive className="w-3.5 h-3.5" />
+            Archivados{archivedCount > 0 && ` (${archivedCount})`}
+          </button>
           {hasFilters && (
             <button
               onClick={() => { setFilterWorkflowId(''); setSearchQuery('') }}
@@ -184,6 +201,29 @@ export default function ClientsPage() {
 
 function ExecutionDetailModal({ execution, clientProfile, onClose }) {
   const [workflow, setWorkflow] = useState(null)
+  const [confirmAction, setConfirmAction] = useState(null) // 'archive' | 'delete'
+  const [acting, setActing] = useState(false)
+
+  async function handleArchive() {
+    setActing(true)
+    await updateDoc(doc(db, 'executions', execution.id), { archived: true, archivedAt: serverTimestamp() })
+    setActing(false)
+    onClose()
+  }
+
+  async function handleReactivate() {
+    setActing(true)
+    await updateDoc(doc(db, 'executions', execution.id), { archived: false, archivedAt: null })
+    setActing(false)
+    onClose()
+  }
+
+  async function handleDelete() {
+    setActing(true)
+    await deleteDoc(doc(db, 'executions', execution.id))
+    setActing(false)
+    onClose()
+  }
 
   useEffect(() => {
     if (!execution.workflowId) return
@@ -356,14 +396,71 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-100 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-sm font-medium transition-colors"
-          >
-            Cerrar
-          </button>
+        {/* Footer — acciones */}
+        <div className="p-4 border-t border-slate-100 flex-shrink-0 space-y-2">
+          {confirmAction === 'archive' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
+              <p className="text-sm text-amber-800 font-medium mb-2">¿Archivar este cliente?</p>
+              <p className="text-xs text-amber-700 mb-3">Su link de flujo quedará pausado. Podrás reactivarlo en cualquier momento.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-lg border border-amber-300 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-colors">Cancelar</button>
+                <button onClick={handleArchive} disabled={acting} className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors disabled:opacity-50">
+                  {acting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {confirmAction === 'delete' && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-800 font-medium">Esta acción es irreversible</p>
+              </div>
+              <p className="text-xs text-red-700 mb-3">Se eliminarán permanentemente todas las respuestas e historial de este cliente.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-lg border border-red-300 text-red-700 text-sm font-medium hover:bg-red-100 transition-colors">Cancelar</button>
+                <button onClick={handleDelete} disabled={acting} className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50">
+                  {acting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Eliminar'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!confirmAction && (
+            <>
+              {execution.archived ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleReactivate}
+                    disabled={acting}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <ArchiveRestore className="w-4 h-4" /> Reactivar
+                  </button>
+                  <button
+                    onClick={() => setConfirmAction('delete')}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" /> Eliminar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmAction('archive')}
+                  className="w-full flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 text-slate-500 hover:text-amber-700 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <Archive className="w-4 h-4" /> Archivar cliente
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              >
+                Cerrar
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
