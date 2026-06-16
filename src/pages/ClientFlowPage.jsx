@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   doc, getDoc, onSnapshot, updateDoc,
-  collection, addDoc, query, orderBy, serverTimestamp,
+  collection, addDoc, query, where, getDocs, orderBy, serverTimestamp,
 } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { db } from '../lib/firebase'
 import FlowStep from '../components/flow/FlowStep'
+import ClientProfileForm from '../components/flow/ClientProfileForm'
 import {
   Loader2, CheckCircle, AlertCircle, Sparkles, ChevronRight,
   Zap, Send, MessageCircle,
@@ -21,6 +22,8 @@ export default function ClientFlowPage() {
   const [submitting, setSubmitting] = useState(false)
   const [aiPhase, setAiPhase] = useState('idle')
   const [aiResult, setAiResult] = useState('')
+  const [profileChecked, setProfileChecked] = useState(false)
+  const [hasProfile, setHasProfile] = useState(false)
 
   // Subscribe to execution in real-time (needed for human escalation).
   // Load workflow once after first execution snapshot.
@@ -45,6 +48,25 @@ export default function ClientFlowPage() {
     )
     return unsub
   }, [id])
+
+  // Check if client already has a profile; if not, show profile form first.
+  useEffect(() => {
+    if (!execution || profileChecked) return
+    if (!execution.clientEmail || !execution.orgId) { setProfileChecked(true); setHasProfile(true); return }
+    const check = async () => {
+      try {
+        const q = query(
+          collection(db, 'clients'),
+          where('orgId', '==', execution.orgId),
+          where('email', '==', execution.clientEmail)
+        )
+        const snap = await getDocs(q)
+        setHasProfile(!snap.empty)
+      } catch { setHasProfile(true) }
+      setProfileChecked(true)
+    }
+    check()
+  }, [execution?.id, profileChecked])
 
   // Capture UTM / click params on first open and store in execution.
   useEffect(() => {
@@ -223,6 +245,39 @@ export default function ClientFlowPage() {
   )
 
   if (error) return <RecoverLinkScreen />
+
+  if (!profileChecked) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <Loader2 className="w-6 h-6 text-blue-800 animate-spin" />
+    </div>
+  )
+
+  if (!hasProfile) return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="border-b border-slate-200 bg-white shadow-sm">
+        <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center h-14">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 bg-blue-800 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Zap className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="text-slate-900 font-semibold text-sm leading-none">{workflow?.name}</p>
+              <p className="text-slate-500 text-xs mt-0.5">Hola, {execution?.clientName}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+        <div className="w-full max-w-xl mx-auto">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Antes de comenzar</h2>
+            <p className="text-slate-500 leading-relaxed">Completa tu perfil para que podamos darte una mejor atención. Solo toma un momento.</p>
+          </div>
+          <ClientProfileForm execution={execution} onComplete={() => setHasProfile(true)} />
+        </div>
+      </div>
+    </div>
+  )
 
   const progress = isCompleted ? 100
     : execution?.totalNodes > 0 ? ((execution?.completedNodes || 0) / execution.totalNodes) * 100

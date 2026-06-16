@@ -8,7 +8,7 @@ const COLUMNS = [
   { id: 'completed',   label: 'Completado',   color: 'text-emerald-700', dot: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 ]
 
-export default function KanbanBoard({ executions, onCardClick }) {
+export default function KanbanBoard({ executions, onCardClick, clientProfiles = {} }) {
   const byStatus = COLUMNS.reduce((acc, col) => {
     acc[col.id] = executions.filter(e => e.status === col.id)
     return acc
@@ -34,7 +34,7 @@ export default function KanbanBoard({ executions, onCardClick }) {
               </div>
             ) : (
               byStatus[col.id].map(exec => (
-                <KanbanCard key={exec.id} execution={exec} onClick={() => onCardClick(exec)} />
+                <KanbanCard key={exec.id} execution={exec} clientProfile={clientProfiles[exec.clientEmail]} onClick={() => onCardClick(exec)} />
               ))
             )}
           </div>
