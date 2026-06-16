@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import {
   ReactFlow, addEdge, useNodesState, useEdgesState,
   Controls, Background, BackgroundVariant, MiniMap,
+  useUpdateNodeInternals,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import NodeSidebar from './NodeSidebar'
@@ -30,6 +31,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
+  const updateNodeInternals = useUpdateNodeInternals()
 
   const onConnect = useCallback(
     params => setEdges(eds => addEdge({ ...params, animated: true, style: { stroke: '#1e40af', strokeWidth: 2 } }, eds)),
@@ -56,6 +58,9 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   function onNodeDataChange(nodeId, newData) {
     setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: newData } : n))
     setSelectedNode(prev => prev?.id === nodeId ? { ...prev, data: newData } : prev)
+    if (newData.options !== undefined) {
+      setTimeout(() => updateNodeInternals(nodeId), 0)
+    }
   }
 
   function onDeleteOptionEdge(nodeId, handleId) {
