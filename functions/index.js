@@ -59,13 +59,19 @@ exports.notifyClient = onCall({ secrets: [resendApiKey] }, async (request) => {
   const { clientEmail, clientName, subject, message } = request.data
   if (!clientEmail) throw new HttpsError('invalid-argument', 'Falta el email del cliente.')
 
+  const name = clientName || 'Cliente'
+  const replace = str => (str || '').replace(/\{\{clientName\}\}/g, name).replace(/\{\{clientEmail\}\}/g, clientEmail)
+
+  const resolvedSubject = replace(subject) || 'Actualización de tu proceso'
+  const resolvedMessage = replace(message) || 'Tienes una actualización en tu proceso.'
+
   await sendEmail({
     to: clientEmail,
-    subject: subject || 'Actualización de tu proceso',
+    subject: resolvedSubject,
     html: buildEmailHtml({
-      title: subject || 'Actualización de tu proceso',
-      name: clientName || 'Cliente',
-      body: message || 'Tienes una actualización en tu proceso.',
+      title: resolvedSubject,
+      name,
+      body: resolvedMessage,
       cta: null,
       link: null,
     }),
