@@ -125,6 +125,41 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
           </>
         )}
 
+        {node.type === 'upload' && (
+          <>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1.5">Instrucciones para el cliente</label>
+              <textarea value={data.instructions || ''} onChange={e => update('instructions', e.target.value)} rows={3}
+                className={`${inputClass} resize-none`} placeholder="Ej: Sube tu cédula de identidad en formato PDF o imagen..." />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-2">Tipos de archivo aceptados</label>
+              <div className="space-y-1.5">
+                {[{ key: 'pdf', label: 'PDF' }, { key: 'image', label: 'Imagen (JPG/PNG)' }, { key: 'docx', label: 'Word (DOCX)' }].map(({ key, label }) => {
+                  const current = data.acceptedTypes || ['pdf', 'image', 'docx']
+                  const checked = current.includes(key)
+                  return (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={checked} className="accent-teal-600"
+                        onChange={e => update('acceptedTypes', e.target.checked ? [...current, key] : current.filter(t => t !== key))} />
+                      <span className="text-xs text-slate-700">{label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1.5">Máximo de archivos</label>
+              <select value={data.maxFiles || 5} onChange={e => update('maxFiles', Number(e.target.value))} className={inputClass}>
+                {[1, 2, 3, 5, 10].map(n => <option key={n} value={n}>{n} archivo{n !== 1 ? 's' : ''}</option>)}
+              </select>
+            </div>
+            <div className="bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-teal-700">Al completar este paso, el cliente queda en estado <strong>En revisión</strong> hasta que un administrador apruebe los documentos.</p>
+            </div>
+          </>
+        )}
+
         {node.type === 'decision' && (
           <div>
             <div className="flex items-center justify-between mb-2">
