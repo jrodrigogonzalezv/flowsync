@@ -1,6 +1,6 @@
 import { NODE_TYPES_CONFIG } from './nodes/nodeTypes'
 
-export default function NodeSidebar() {
+export default function NodeSidebar({ hasStart }) {
   function onDragStart(e, nodeType) {
     e.dataTransfer.setData('application/reactflow', nodeType)
     e.dataTransfer.effectAllowed = 'move'
@@ -14,12 +14,19 @@ export default function NodeSidebar() {
       </div>
 
       <div className="p-3 space-y-2 overflow-y-auto flex-1">
-        {Object.entries(NODE_TYPES_CONFIG).map(([type, config]) => (
+        {Object.entries(NODE_TYPES_CONFIG).map(([type, config]) => {
+          const disabled = type === 'start' && hasStart
+          return (
           <div
             key={type}
-            draggable
-            onDragStart={e => onDragStart(e, type)}
-            className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-grab active:cursor-grabbing hover:border-blue-200 hover:bg-blue-50 transition-colors select-none"
+            draggable={!disabled}
+            onDragStart={disabled ? undefined : e => onDragStart(e, type)}
+            title={disabled ? 'Solo puede haber un nodo de inicio' : undefined}
+            className={`flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 select-none transition-colors ${
+              disabled
+                ? 'opacity-40 cursor-not-allowed'
+                : 'cursor-grab active:cursor-grabbing hover:border-blue-200 hover:bg-blue-50'
+            }`}
           >
             <div className={`w-8 h-8 rounded-lg ${config.bgLight} border ${config.border} flex items-center justify-center text-sm flex-shrink-0`}>
               {config.icon}
@@ -29,7 +36,8 @@ export default function NodeSidebar() {
               <p className="text-[11px] text-slate-400 leading-tight truncate">{config.description}</p>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
