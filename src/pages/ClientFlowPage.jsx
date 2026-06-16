@@ -10,7 +10,7 @@ import FlowStep from '../components/flow/FlowStep'
 import ClientProfileForm from '../components/flow/ClientProfileForm'
 import {
   Loader2, CheckCircle, AlertCircle, Sparkles, ChevronRight,
-  Zap, Send, MessageCircle,
+  Zap, Send, MessageCircle, FileText, Clock,
 } from 'lucide-react'
 
 export default function ClientFlowPage() {
@@ -118,7 +118,8 @@ export default function ClientFlowPage() {
   })()
 
   const isCompleted = execution?.status === 'completed'
-  const needsSupport = !!execution?.humanSupportRequested && !isCompleted
+  const isUnderReview = execution?.status === 'review'
+  const needsSupport = !!execution?.humanSupportRequested && !isCompleted && !isUnderReview
 
   // Reset AI phase when the active node changes.
   const activeNodeKey = execution?.currentNodeId ?? execution?.currentNodeIndex
@@ -189,6 +190,36 @@ export default function ClientFlowPage() {
         setAiResult('No se pudo completar el análisis. Puedes continuar al siguiente paso.')
         setAiPhase('result')
       }
+      return
+    }
+
+    // Nodo de carga de documentos → pasa a revisión
+    if (currentNode.type === 'upload') {
+      setSubmitting(true)
+      try {
+        const { uploadedFiles = [] } = responses
+        const nextNode = getNextNode(currentNode.id)
+        const newCompleted = (execution.completedNodes || 0) + 1
+        const historyEntry = {
+          nodeId: currentNode.id,
+          nodeType: 'upload',
+          label: currentNode.data?.label || 'Carga de documentos',
+          nextNodeId: nextNode?.id ?? null,
+          at: new Date().toISOString(),
+        }
+        await updateDoc(doc(db, 'executions', id), {
+          responses: { ...(execution.responses || {}), [currentNode.id]: { fileCount: uploadedFiles.length } },
+          uploadedDocs: [...(execution.uploadedDocs || []), ...uploadedFiles.map(f => ({ ...f, nodeId: currentNode.id }))],
+          currentNodeId: nextNode?.id ?? null,
+          currentNodeIndex: (execution.currentNodeIndex ?? 0) + 1,
+          completedNodes: newCompleted,
+          status: 'review',
+          reviewNodeId: currentNode.id,
+          pendingContinueNodeId: nextNode?.id ?? null,
+          navigationHistory: [...(execution.navigationHistory || []), historyEntry],
+          updatedAt: serverTimestamp(),
+        })
+      } finally { setSubmitting(false) }
       return
     }
 
@@ -332,6 +363,8 @@ export default function ClientFlowPage() {
         <div className="w-full max-w-xl mx-auto">
           {isCompleted
             ? <CompletedScreen name={execution?.clientName} />
+            : isUnderReview
+            ? <UnderReviewScreen docs={execution?.uploadedDocs || []} />
             : needsSupport
             ? <ClientChatScreen executionId={id} clientName={execution?.clientName} />
             : aiPhase === 'analyzing'
@@ -357,6 +390,8 @@ export default function ClientFlowPage() {
                 submitting={submitting}
                 onSubmit={handleSubmit}
                 clientData={{ clientName: execution?.clientName, clientEmail: execution?.clientEmail }}
+                executionId={id}
+                orgId={execution?.orgId}
               />
             : <div className="text-center text-slate-400 py-20">Este flujo no tiene pasos configurados.</div>
           }
@@ -580,6 +615,31 @@ function AiResultScreen({ result, stepNumber, totalSteps, submitting, onContinue
         className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm">
         {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : <>{stepNumber === totalSteps ? 'Finalizar' : 'Continuar'} <ChevronRight className="w-4 h-4" /></>}
       </button>
+    </div>
+  )
+}
+
+function UnderReviewScreen({ docs }) {
+  return (
+    <div className="text-center py-12">
+      <div className="w-20 h-20 bg-amber-50 border-2 border-amber-200 rounded-full flex items-center justify-center mx-auto mb-6">
+        <Clock className="w-10 h-10 text-amber-500" />
+      </div>
+      <h2 className="text-2xl font-bold text-slate-900 mb-3">Documentos en revisión</h2>
+      <p className="text-slate-500 max-w-sm mx-auto leading-relaxed mb-6">
+        Hemos recibido tus documentos. Nuestro equipo los revisará y te notificará cuando tengamos novedades.
+      </p>
+      {docs.length > 0 && (
+        <div className="text-left bg-white border border-slate-200 rounded-2xl p-4 space-y-2 max-w-sm mx-auto">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Documentos enviados</p>
+          {docs.map(d => (
+            <div key={d.id} className="flex items-center gap-2.5">
+              <FileText className="w-4 h-4 text-teal-500 flex-shrink-0" />
+              <span className="text-sm text-slate-700 truncate">{d.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

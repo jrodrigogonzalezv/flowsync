@@ -65,6 +65,17 @@ export const NODE_TYPES_CONFIG = {
     maxInputs: 1,
     maxOutputs: 1,
   },
+  upload: {
+    label: 'Carga docs',
+    color: 'bg-teal-600',
+    border: 'border-teal-300',
+    textColor: 'text-teal-700',
+    bgLight: 'bg-teal-50',
+    icon: '📎',
+    description: 'Cliente sube documentos (va a revisión)',
+    maxInputs: 1,
+    maxOutputs: 1,
+  },
   end: {
     label: 'Fin',
     color: 'bg-rose-600',

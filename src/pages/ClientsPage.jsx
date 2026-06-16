@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import KanbanBoard from '../components/kanban/KanbanBoard'
 import InviteClientModal from '../components/kanban/InviteClientModal'
 import OperatorChatPanel from '../components/chat/OperatorChatPanel'
-import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle } from 'lucide-react'
+import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle, FileText, ExternalLink, CheckCircle, RefreshCw } from 'lucide-react'
 import { deleteDoc, updateDoc } from 'firebase/firestore'
 
 export default function ClientsPage() {
@@ -250,14 +250,43 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
   const statusLabel = {
     invited: 'Invitado',
     in_progress: 'En progreso',
+    review: 'En revisión',
     completed: 'Completado',
   }[execution.status] || execution.status
 
   const statusColor = {
-    invited: 'bg-amber-50 text-amber-700 border-amber-200',
+    invited: 'bg-slate-50 text-slate-700 border-slate-200',
     in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
+    review: 'bg-amber-50 text-amber-700 border-amber-200',
     completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   }[execution.status] || 'bg-slate-50 text-slate-700 border-slate-200'
+
+  async function handleApprove() {
+    setActing(true)
+    const nextNodeId = execution.pendingContinueNodeId
+    const nextNode = workflow?.nodes?.find(n => n.id === nextNodeId)
+    const isEnd = !nextNode || nextNode.type === 'end'
+    await updateDoc(doc(db, 'executions', execution.id), {
+      status: isEnd ? 'completed' : 'in_progress',
+      currentNodeId: isEnd ? null : nextNode.id,
+      reviewApprovedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    setActing(false)
+    onClose()
+  }
+
+  async function handleRequestMoreDocs() {
+    setActing(true)
+    await updateDoc(doc(db, 'executions', execution.id), {
+      status: 'in_progress',
+      currentNodeId: execution.reviewNodeId,
+      uploadedDocs: [],
+      updatedAt: serverTimestamp(),
+    })
+    setActing(false)
+    onClose()
+  }
 
   const responseEntries = Object.entries(execution.responses || {}).filter(([, data]) => {
     if (!data || typeof data !== 'object') return false
@@ -368,6 +397,24 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
             ))}
           </div>
 
+          {/* Uploaded docs */}
+          {execution.uploadedDocs?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Documentos subidos</p>
+              <div className="space-y-2">
+                {execution.uploadedDocs.map(d => (
+                  <a key={d.id} href={d.downloadURL} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors group"
+                  >
+                    <FileText className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span className="text-sm font-medium text-slate-900 flex-1 truncate">{d.name}</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-600 transition-colors" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Responses */}
           {responseEntries.length > 0 && (
             <div>
@@ -435,6 +482,25 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
                   {acting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Eliminar'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {!confirmAction && execution.status === 'review' && !execution.archived && (
+            <div className="space-y-2 mb-2">
+              <button
+                onClick={handleApprove}
+                disabled={acting}
+                className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {acting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4" /> Aprobar y continuar</>}
+              </button>
+              <button
+                onClick={handleRequestMoreDocs}
+                disabled={acting}
+                className="w-full flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 text-slate-600 hover:text-amber-700 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className="w-4 h-4" /> Solicitar más documentos
+              </button>
             </div>
           )}
 

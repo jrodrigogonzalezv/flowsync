@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from '../utils/date'
-import { GitBranch, Clock, CheckCircle, AlertCircle, Mail, MessageCircle, Building2 } from 'lucide-react'
+import { GitBranch, Clock, CheckCircle, AlertCircle, Mail, MessageCircle, Building2, FileText } from 'lucide-react'
 
 const statusIcon = {
   invited:     <Mail className="w-3.5 h-3.5 text-slate-400" />,
@@ -65,6 +65,15 @@ export default function KanbanCard({ execution, onClick, clientProfile }) {
           <Building2 className="w-3 h-3 text-indigo-400 flex-shrink-0" />
           <span className="text-xs text-indigo-600 font-medium truncate">{clientProfile.name}</span>
           {clientProfile.position && <span className="text-xs text-slate-400">· {clientProfile.position}</span>}
+        </div>
+      )}
+
+      {execution.status === 'review' && (execution.uploadedDocs?.length > 0) && (
+        <div className="flex items-center gap-1 mb-2">
+          <FileText className="w-3 h-3 text-amber-500 flex-shrink-0" />
+          <span className="text-xs text-amber-600 font-medium">
+            {execution.uploadedDocs.length} doc{execution.uploadedDocs.length !== 1 ? 's' : ''} para revisar
+          </span>
         </div>
       )}
 

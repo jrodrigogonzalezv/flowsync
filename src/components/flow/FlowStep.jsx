@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { Loader2, ChevronRight, Star } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Loader2, ChevronRight, Star, Upload, X, FileText, CheckCircle } from 'lucide-react'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { storage } from '../../lib/firebase'
 import { NODE_TYPES_CONFIG } from '../builder/nodes/nodeTypes'
 
 function resolveVars(text, vars) {
@@ -9,7 +11,7 @@ function resolveVars(text, vars) {
     .replace(/\{\{clientEmail\}\}/g, vars.clientEmail || '')
 }
 
-export default function FlowStep({ step, stepNumber, totalSteps, submitting, onSubmit, clientData }) {
+export default function FlowStep({ step, stepNumber, totalSteps, submitting, onSubmit, clientData, executionId, orgId }) {
   const [values, setValues] = useState({})
   const [errors, setErrors] = useState({})
   const config = NODE_TYPES_CONFIG[step.type] || {}
@@ -63,7 +65,18 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
         </p>
       )}
 
-      <form onSubmit={handleSubmit}>
+      {step.type === 'upload' && (
+        <UploadStep
+          step={step}
+          stepNumber={stepNumber}
+          totalSteps={totalSteps}
+          executionId={executionId}
+          orgId={orgId}
+          onSubmit={onSubmit}
+        />
+      )}
+
+      <form onSubmit={handleSubmit} style={{ display: step.type === 'upload' ? 'none' : undefined }}>
         {step.type === 'form' && (
           <div className="space-y-5 mb-8">
             {(step.data.fields || []).map(field => (
@@ -119,6 +132,153 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
         </button>
       </form>
     </div>
+  )
+}
+
+function UploadStep({ step, stepNumber, totalSteps, executionId, orgId, onSubmit }) {
+  const [files, setFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState({})
+  const [uploadError, setUploadError] = useState('')
+  const inputRef = useRef()
+
+  const maxFiles = step.data.maxFiles || 5
+  const acceptedTypes = step.data.acceptedTypes || ['pdf', 'image', 'docx']
+  const acceptAttr = [
+    acceptedTypes.includes('pdf') ? '.pdf' : null,
+    acceptedTypes.includes('image') ? 'image/*' : null,
+    acceptedTypes.includes('docx') ? '.docx,.doc' : null,
+  ].filter(Boolean).join(',')
+
+  function addFiles(incoming) {
+    const remaining = maxFiles - files.length
+    const toAdd = Array.from(incoming).slice(0, remaining)
+    setFiles(prev => [...prev, ...toAdd])
+  }
+
+  function removeFile(idx) {
+    setFiles(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function onDrop(e) {
+    e.preventDefault()
+    addFiles(e.dataTransfer.files)
+  }
+
+  async function handleUpload(e) {
+    e.preventDefault()
+    if (!files.length) return
+    setUploading(true)
+    setUploadError('')
+
+    try {
+      const uploaded = []
+      for (const file of files) {
+        const fileId = crypto.randomUUID()
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : ''
+        const storagePath = `client-docs/${orgId}/${executionId}/${step.id}/${fileId}${ext ? '.' + ext : ''}`
+        const storageRef = ref(storage, storagePath)
+
+        await new Promise((resolve, reject) => {
+          const task = uploadBytesResumable(storageRef, file)
+          task.on('state_changed',
+            snap => {
+              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
+              setProgress(p => ({ ...p, [fileId]: pct }))
+            },
+            reject,
+            async () => {
+              const downloadURL = await getDownloadURL(task.snapshot.ref)
+              uploaded.push({ id: fileId, name: file.name, size: file.size, type: file.type, storagePath, downloadURL, uploadedAt: new Date().toISOString() })
+              resolve()
+            }
+          )
+        })
+      }
+      onSubmit({ uploadedFiles: uploaded })
+    } catch {
+      setUploadError('Error al subir archivos. Intenta de nuevo.')
+      setUploading(false)
+    }
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  return (
+    <form onSubmit={handleUpload}>
+      <div
+        onDrop={onDrop}
+        onDragOver={e => e.preventDefault()}
+        onClick={() => !uploading && inputRef.current?.click()}
+        className={`border-2 border-dashed rounded-2xl p-8 text-center mb-5 transition-all cursor-pointer
+          ${files.length >= maxFiles ? 'border-slate-200 bg-slate-50 cursor-not-allowed' : 'border-teal-300 bg-teal-50/40 hover:border-teal-500 hover:bg-teal-50'}`}
+      >
+        <Upload className="w-8 h-8 text-teal-500 mx-auto mb-3" />
+        <p className="text-sm font-semibold text-slate-700 mb-1">
+          {files.length >= maxFiles ? `Máximo ${maxFiles} archivo${maxFiles !== 1 ? 's' : ''}` : 'Arrastra archivos aquí o haz clic para seleccionar'}
+        </p>
+        <p className="text-xs text-slate-400">{acceptedTypes.map(t => t === 'image' ? 'JPG/PNG' : t.toUpperCase()).join(' · ')}</p>
+        <input ref={inputRef} type="file" multiple={maxFiles > 1} accept={acceptAttr} className="hidden"
+          onChange={e => addFiles(e.target.files)} disabled={uploading || files.length >= maxFiles} />
+      </div>
+
+      {step.data.instructions && (
+        <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-5">
+          <p className="text-sm text-teal-800">{step.data.instructions}</p>
+        </div>
+      )}
+
+      {files.length > 0 && (
+        <div className="space-y-2 mb-6">
+          {files.map((file, idx) => {
+            const fileId = Object.keys(progress)[idx]
+            const pct = fileId ? (progress[fileId] ?? 0) : 0
+            const done = pct === 100
+            return (
+              <div key={idx} className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  {done
+                    ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    : <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-900 truncate font-medium">{file.name}</p>
+                    <p className="text-xs text-slate-400">{formatSize(file.size)}</p>
+                  </div>
+                  {!uploading && (
+                    <button type="button" onClick={e => { e.stopPropagation(); removeFile(idx) }} className="text-slate-300 hover:text-red-500 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                {uploading && (
+                  <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-teal-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {uploadError && <p className="text-red-500 text-sm mb-4">⚠ {uploadError}</p>}
+
+      <button
+        type="submit"
+        disabled={!files.length || uploading}
+        className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm"
+      >
+        {uploading
+          ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+          : <><Upload className="w-4 h-4" /> Enviar documentos</>
+        }
+      </button>
+    </form>
   )
 }
 

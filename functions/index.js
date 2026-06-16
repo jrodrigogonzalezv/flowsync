@@ -335,6 +335,19 @@ exports.onExecutionComplete = onDocumentUpdated('executions/{executionId}', asyn
     }).catch(e => console.error('Notification error:', e.message))
   }
 
+  // Notification: documents submitted for review
+  if (before.status !== 'review' && after.status === 'review') {
+    await db.collection('notifications').add({
+      orgId: after.orgId,
+      type: 'docs_submitted',
+      clientName: after.clientName || '',
+      workflowName: after.workflowName || '',
+      executionId: event.params.executionId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => console.error('Notification error:', e.message))
+  }
+
   // Notification: support requested
   if (!before.humanSupportRequested && after.humanSupportRequested) {
     await db.collection('notifications').add({
