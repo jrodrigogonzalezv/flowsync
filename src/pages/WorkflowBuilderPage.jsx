@@ -134,7 +134,7 @@ export default function WorkflowBuilderPage() {
       {showTemplate && (
         <TemplateModal
           onSelect={template => {
-            setName(template.name || 'Nuevo flujo')
+            if (template.id !== 'blank') setName(template.name || 'Nuevo flujo')
             setWorkflow({ nodes: template.nodes, edges: template.edges })
             setBuilderKey(k => k + 1)
             setShowTemplate(false)
