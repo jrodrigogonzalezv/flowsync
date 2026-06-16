@@ -206,7 +206,7 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-16)
+## Estado actual (2026-06-16 — actualizado)
 
 ### ✅ Completado
 - Login (Google OAuth + email/password)
@@ -238,6 +238,17 @@ npm run dev
 - Recordatorios diarios automatizados (Cloud Scheduler)
 - Dashboard con analytics
 - Eliminar flujos desde WorkflowsPage (botones siempre visibles)
+- **Nodo "Carga docs"** (tipo `upload`):
+  - Cliente sube archivos (PDF/imagen/Word) directamente a Firebase Storage (`client-docs/{orgId}/{executionId}/{nodeId}/`)
+  - Al enviar, la ejecución pasa a status `review` automáticamente
+  - Cliente ve pantalla "Documentos en revisión" con lista de archivos enviados
+  - KanbanCard: badge "N docs para revisar" en columna En revisión
+  - Admin ve documentos en modal (links descarga) con:
+    - **Aprobar y continuar** → avanza al siguiente nodo (`pendingContinueNodeId`) o completa el flujo
+    - **Solicitar más docs** → vuelve al nodo upload (`reviewNodeId`), limpia `uploadedDocs`
+  - Execution fields nuevos: `uploadedDocs[]`, `reviewNodeId`, `pendingContinueNodeId`
+  - Notificación interna `docs_submitted` al subir documentos
+  - Recordatorios de email NO se envían a status `review` (correcto por diseño)
 - Deploy en https://flowsync-e9709.web.app
 
 ### 🔜 Pendiente / Ideas futuras
