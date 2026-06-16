@@ -7,7 +7,10 @@ export default function FlowNode({ id, data, selected, type }) {
   const updateNodeInternals = useUpdateNodeInternals()
 
   useEffect(() => {
-    if (type === 'decision') updateNodeInternals(id)
+    if (type !== 'decision') return
+    // Defer until after React Flow has committed the new handles to the DOM
+    const timer = setTimeout(() => updateNodeInternals(id), 0)
+    return () => clearTimeout(timer)
   }, [data.options, id, type, updateNodeInternals])
 
   return (
