@@ -33,8 +33,8 @@ async function sendEmail({ to, subject, html, fromName = 'FlowSync' }) {
 // ─── analyzeFlow ─────────────────────────────────────────────────────────────
 
 exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
-  const { responses, aiPrompt, knowledgeBase } = request.data
-  if (!responses || !aiPrompt) throw new HttpsError('invalid-argument', 'Faltan datos para el análisis.')
+  const { responses, formattedResponses: preFormatted, aiPrompt, knowledgeBase } = request.data
+  if (!aiPrompt) throw new HttpsError('invalid-argument', 'Faltan datos para el análisis.')
 
   const genAI = new GoogleGenerativeAI(geminiApiKey.value())
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
@@ -45,12 +45,32 @@ exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
     '\n\nResponde siempre en español. Sé claro, conciso y útil para el cliente.',
   ].join('')
 
-  const formattedResponses = Object.entries(responses)
-    .map(([, data]) => Object.entries(data).map(([k, v]) => `- ${k}: ${v}`).join('\n'))
+  const formattedResponses = preFormatted || Object.entries(responses || {})
+    .map(([, data]) => Object.entries(data || {}).map(([k, v]) => `- ${k}: ${v}`).join('\n'))
     .join('\n\n')
 
   const result = await model.generateContent(`${systemPrompt}\n\nRespuestas del cliente:\n\n${formattedResponses}`)
   return { result: result.response.text() }
+})
+
+// ─── notifyClient — envía email al cliente desde un nodo Notificación ─────────
+
+exports.notifyClient = onCall({ secrets: [resendApiKey] }, async (request) => {
+  const { clientEmail, clientName, subject, message } = request.data
+  if (!clientEmail) throw new HttpsError('invalid-argument', 'Falta el email del cliente.')
+
+  await sendEmail({
+    to: clientEmail,
+    subject: subject || 'Actualización de tu proceso',
+    html: buildEmailHtml({
+      title: subject || 'Actualización de tu proceso',
+      name: clientName || 'Cliente',
+      body: message || 'Tienes una actualización en tu proceso.',
+      cta: null,
+      link: null,
+    }),
+  })
+  return { sent: true }
 })
 
 // ─── extractKnowledgeBaseFile ─────────────────────────────────────────────────

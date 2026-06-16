@@ -128,6 +128,25 @@ export default function ClientFlowPage() {
     })
   }
 
+  function formatResponsesForAI() {
+    return Object.entries(execution.responses || {})
+      .filter(([, data]) => data && typeof data === 'object')
+      .map(([nodeId, data]) => {
+        const node = findNode(nodeId)
+        const nodeName = node?.data?.label || 'Paso'
+        const fields = node?.data?.fields || []
+        const lines = Object.entries(data)
+          .map(([k, v]) => {
+            const field = fields.find(f => f.id === k)
+            return `- ${field?.label || k}: ${v}`
+          })
+          .join('\n')
+        return lines ? `${nodeName}:\n${lines}` : null
+      })
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
   async function handleSubmit(responses) {
     if (currentNode.type === 'ai' && aiPhase === 'idle') {
       setAiPhase('analyzing')
@@ -135,7 +154,7 @@ export default function ClientFlowPage() {
         const fns = getFunctions()
         const analyzeFlow = httpsCallable(fns, 'analyzeFlow')
         const result = await analyzeFlow({
-          responses: execution.responses || {},
+          formattedResponses: formatResponsesForAI(),
           aiPrompt: currentNode.data.aiPrompt || 'Analiza las respuestas del cliente.',
           knowledgeBase: [
             workflow.knowledgeBase || '',
@@ -149,6 +168,18 @@ export default function ClientFlowPage() {
         setAiPhase('result')
       }
       return
+    }
+
+    // Nodo de notificación: disparar email al cliente (no bloqueante)
+    if (currentNode.type === 'notification' && execution?.clientEmail) {
+      const fns = getFunctions()
+      const notifyClient = httpsCallable(fns, 'notifyClient')
+      notifyClient({
+        clientEmail: execution.clientEmail,
+        clientName: execution.clientName || '',
+        subject: currentNode.data?.subject || currentNode.data?.label || 'Actualización de tu proceso',
+        message: currentNode.data?.message || 'Tienes una actualización en tu proceso.',
+      }).catch(() => {})
     }
 
     setSubmitting(true)
