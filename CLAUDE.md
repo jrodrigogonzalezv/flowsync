@@ -20,13 +20,13 @@ SaaS multi-tenant de automatización de flujos con IA. Permite:
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | React + Vite, Tailwind CSS v4, React Router v7, React Flow (`@xyflow/react`) |
+| Frontend | React + Vite, Tailwind CSS v4, React Router v7, React Flow (`@xyflow/react` v12.11.0) |
 | Auth | Firebase Auth (Google OAuth + email/password) |
 | Base de datos | Firestore (onSnapshot real-time) |
-| Storage | Firebase Storage (documentos KB) |
+| Storage | Firebase Storage (KB docs + fotos de perfil) |
 | Backend | Firebase Functions v2 (Node 20, onCall + onSchedule) |
 | IA | Google Gemini `gemini-1.5-flash` via `@google/generative-ai` |
-| Email | Resend.com (`resend` npm package) via Firebase Function |
+| Email | Resend.com (`resend` npm) via Firebase Function |
 | Hosting | Firebase Hosting |
 | Icons | Lucide React |
 
@@ -49,28 +49,33 @@ src/
   App.jsx                            — rutas: /login, /flow/:id, /join (públicas); resto privadas
                                        AdminRoute: /workflows, /workflows/:id, /team
   index.css                          — solo reset básico (@import "tailwindcss")
+  data/
+    workflowTemplates.js             — 10 plantillas predefinidas (nodos+edges listos)
   pages/
     Dashboard.jsx                    — stats, actividad reciente, analytics
-    WorkflowsPage.jsx                — lista de flujos (filtra por orgId)
-    WorkflowBuilderPage.jsx          — editor con header + KnowledgeBaseModal
-    ClientsPage.jsx                  — Kanban de clientes (filtra por orgId)
-    ClientFlowPage.jsx               — vista pública del cliente + RecoverLinkScreen
+    WorkflowsPage.jsx                — lista de flujos (filtra por orgId), botón delete
+    WorkflowBuilderPage.jsx          — editor con header + KnowledgeBaseModal + TemplateModal
+    ClientsPage.jsx                  — Kanban clientes: archivo/eliminar, selector flujos activos
+    ClientFlowPage.jsx               — vista pública del cliente + RecoverLinkScreen + ArchivedScreen
     TeamPage.jsx                     — gestión de miembros e invitaciones (solo admin)
-    JoinPage.jsx                     — página de aceptación de invitación de equipo (/join?invite=ID)
+    JoinPage.jsx                     — aceptación de invitación de equipo (/join?invite=ID)
   components/
     layout/AppLayout.jsx             — navbar (adminNav/supervisorNav), badge de rol
     auth/LoginPage.jsx               — login split layout
     kb/KnowledgeBaseModal.jsx        — modal KB: texto manual + upload de archivos
     builder/
-      WorkflowBuilder.jsx            — React Flow canvas
-      NodeSidebar.jsx                — panel izquierdo tipos de nodo
-      NodeConfigPanel.jsx            — panel derecho configuración
+      WorkflowBuilder.jsx            — React Flow canvas (onDrop guard start único, onDeleteNode)
+      NodeSidebar.jsx                — panel izquierdo tipos de nodo (hasStart → disable Inicio)
+      NodeConfigPanel.jsx            — panel derecho config (botón Eliminar, oculto en start)
+      TemplateModal.jsx              — selector plantillas: "Flujo en blanco" + grid de plantillas
       nodes/FlowNode.jsx             — visual de nodo
-      nodes/nodeTypes.js             — config tipos
-    flow/FlowStep.jsx                — paso individual (cliente)
+      nodes/nodeTypes.js             — config tipos con bgLight, textColor, border, icon, label
+    flow/
+      FlowStep.jsx                   — paso individual (cliente)
+      ClientProfileForm.jsx          — formulario perfil antes del flujo (foto, RUT, empresa, etc.)
     kanban/
-      KanbanBoard.jsx                — columnas del kanban
-      KanbanCard.jsx                 — tarjeta cliente
+      KanbanBoard.jsx                — columnas del kanban (recibe clientProfiles prop)
+      KanbanCard.jsx                 — tarjeta cliente (avatar foto, badge ARCHIVADO, opacidad)
       InviteClientModal.jsx          — invitar + enviar email + link
     utils/date.js                    — formatDistanceToNow(timestamp)
 functions/
@@ -85,6 +90,7 @@ functions/
 
 - **Proyecto:** `flowsync-e9709`
 - **URL live:** https://flowsync-e9709.web.app
+- **Repo GitHub:** https://github.com/jrodrigogonzalezv/flowsync
 - **Storage bucket:** `gs://flowsync-e9709.firebasestorage.app`
 - **Plan:** Blaze (requerido para Functions + Storage)
 - **Reglas:** `firestore.rules` + `storage.rules` deployadas
@@ -99,27 +105,28 @@ functions/
 | `users` | uid, email, displayName, orgId, role, createdAt |
 | `organizations` | name, createdAt |
 | `workflows` | userId (= orgId del admin), orgId, name, knowledgeBase, knowledgeBaseFiles[], nodes[], edges[], createdAt |
-| `executions` | userId, orgId, workflowId, workflowName, clientName, clientEmail, status, currentNodeIndex, completedNodes, totalNodes, responses{}, remindersSent, createdAt, updatedAt |
+| `executions` | userId, orgId, workflowId, workflowName, clientName, clientEmail, status, currentNodeIndex, completedNodes, totalNodes, responses{}, remindersSent, archived (bool), createdAt, updatedAt |
 | `invites` | email, orgId, role, createdBy, createdByName, claimed, expiresAt, createdAt |
+| `clients` | orgId, email, displayName, type ('natural'\|'juridica'), phone, rut, address, companyName, companyRut, photoURL, createdAt, updatedAt |
 
 ### knowledgeBaseFiles (array en workflows)
 ```js
-{
-  id: string,           // uuid
-  name: string,         // nombre original del archivo
-  size: number,
-  type: string,         // 'pdf' | 'docx' | 'txt' | 'image'
-  mimeType: string,
-  storagePath: string,  // ruta en Firebase Storage
-  extractedText: string // texto extraído por extractKnowledgeBaseFile
-}
+{ id, name, size, type, mimeType, storagePath, extractedText }
 ```
+
+### Storage paths
+- KB docs: `kb/{workflowId}/{fileId}/{filename}`
+- Fotos de perfil clientes: `profiles/clients/{orgId}/{sanitizedEmail}`
 
 ### Status de executions
 `invited` → `in_progress` → `completed`
 
+### archived en executions
+- `archived: true` → link del cliente muestra `ArchivedScreen` (proceso pausado)
+- Solo se puede eliminar definitivamente desde el estado archivado
+
 ### Roles
-- `admin`: crea flujos, gestiona equipo, ve todo. `orgId = uid` (backward compat)
+- `admin`: crea flujos, gestiona equipo, ve todo. `orgId = uid`
 - `supervisor`: solo ve Clientes y Dashboard. `orgId` del admin que lo invitó
 
 ---
@@ -129,11 +136,12 @@ functions/
 | Función | Trigger | Descripción |
 |---------|---------|-------------|
 | `analyzeFlow` | onCall | Análisis IA con Gemini. Recibe respuestas + knowledgeBase |
-| `extractKnowledgeBaseFile` | onCall | Descarga archivo de Storage, extrae texto (pdf-parse/mammoth/Gemini Vision) |
-| `sendInviteEmail` | onCall | Envía email de invitación al cliente (Resend) |
-| `sendTeamInvite` | onCall | Envía email de invitación al colaborador (Resend) |
-| `resendFlowLink` | onCall | Busca ejecuciones pendientes por email y reenvía links |
-| `sendReminders` | onSchedule (24h) | Recordatorio diario a clientes con ejecuciones sin completar y remindersSent=0 |
+| `extractKnowledgeBaseFile` | onCall | Descarga archivo de Storage, extrae texto |
+| `sendInviteEmail` | onCall | Email de invitación al cliente (Resend) |
+| `notifyClient` | onCall | Notificación por email al cliente (con vars `{{clientName}}`, `{{clientEmail}}` sustituidas server-side) |
+| `sendTeamInvite` | onCall | Email de invitación al colaborador (Resend) |
+| `resendFlowLink` | onCall | Reenvía links a clientes con ejecuciones pendientes |
+| `sendReminders` | onSchedule (24h) | Recordatorio diario a clientes con remindersSent=0 |
 
 ---
 
@@ -160,52 +168,20 @@ npm run build        # build de producción (output: dist/)
 ## Deploy
 
 ```bash
-# Build + deploy completo
-npm run build
-npx firebase-tools deploy --project flowsync-e9709
+# Solo hosting (más común)
+npm run build && npx firebase-tools deploy --only hosting --project flowsync-e9709
 
 # Solo functions
 npx firebase-tools deploy --only functions --project flowsync-e9709
 
-# Solo hosting
-npm run build && npx firebase-tools deploy --only hosting --project flowsync-e9709
+# Todo
+npm run build && npx firebase-tools deploy --project flowsync-e9709
 
 # Git
 git add -A && git commit -m "mensaje" && git push origin main
 ```
 
----
-
-## Estado actual (2026-06-12)
-
-### ✅ Completado
-- Login (Google OAuth + email/password)
-- Builder visual de flujos (drag-and-drop, 6 tipos de nodos)
-- Base de conocimiento: texto manual + upload de PDF/DOCX/TXT/imágenes con extracción automática
-- Vista del cliente (`/flow/:id`) con progreso paso a paso y RecoverLinkScreen
-- Análisis IA (Gemini): idle → analizando → resultado → continuar
-- Kanban de clientes en tiempo real
-- Invitación de clientes con link + email (Resend)
-- Roles: Admin / Supervisor con rutas protegidas
-- Multi-tenant: orgId, TeamPage, JoinPage, claimInvite
-- Emails funcionando con Resend (sendInviteEmail, sendTeamInvite, resendFlowLink, sendReminders)
-- Recordatorios diarios automatizados (Cloud Scheduler)
-- Firestore rules + Storage rules deployadas
-- Dashboard con analytics
-- Deploy en https://flowsync-e9709.web.app
-- Código en https://github.com/jrodrigogonzalezv/flowsync
-
-### 🔜 Pendiente / Ideas futuras
-- WhatsApp integration (Twilio) — deferido
-- Verificar dominio `system.cl` en Resend para enviar desde `noreply@system.cl`
-- Filtros en el Kanban (por flujo, por fecha)
-- Exportar respuestas a CSV
-- Personalización de emails (logo del cliente)
-- Webhooks cuando un cliente termina
-
----
-
-## Cómo retomar el proyecto
+## Clonar en otro equipo
 
 ```bash
 git clone https://github.com/jrodrigogonzalezv/flowsync.git
@@ -218,6 +194,50 @@ npm run dev
 
 ---
 
+## Estado actual (2026-06-16)
+
+### ✅ Completado
+- Login (Google OAuth + email/password)
+- Builder visual de flujos (drag-and-drop, 6 tipos de nodos)
+  - Nodo Inicio: no se puede duplicar (guard en onDrop + sidebar disabled)
+  - Eliminar nodo: botón en NodeConfigPanel (oculto para start)
+- Base de conocimiento: texto manual + upload PDF/DOCX/TXT/imagen con extracción automática
+- Plantillas de flujos: 10 plantillas (básico, IA, decisión) + "Flujo en blanco"
+  - `TemplateModal` como primer paso al crear flujo nuevo
+  - También accesible desde el canvas con botón "Plantillas"
+  - `builderKey` en WorkflowBuilderPage fuerza remount de WorkflowBuilder al cambiar plantilla
+- Vista del cliente (`/flow/:id`) con progreso paso a paso y RecoverLinkScreen
+  - `ArchivedScreen` cuando `execution.archived === true`
+  - `ClientProfileForm` si el cliente no tiene perfil (se muestra antes del flujo)
+- Perfiles de clientes: foto (Storage), RUT, teléfono, dirección, persona natural/jurídica
+- Análisis IA (Gemini): idle → analizando → resultado → continuar
+- Kanban de clientes en tiempo real
+  - KanbanCard: avatar foto perfil, badge ARCHIVADO, opacidad reducida en archivados
+  - clientProfiles pasado desde ClientsPage → KanbanBoard → KanbanCard
+- Archivo y eliminación de ejecuciones (ClientsPage):
+  - Archivar (reversible): `archived: true` en Firestore, link muestra ArchivedScreen
+  - Reactivar: `archived: false`
+  - Eliminar definitivo (solo desde archivado): borra documento + muestra confirmación fuerte
+- Selector de flujos en Clientes solo muestra flujos **activos** (onSnapshot a `workflows`)
+- Invitación de clientes con link + email (Resend)
+- Emails con variables `{{clientName}}` y `{{clientEmail}}` sustituidas server-side en `notifyClient`
+- Roles: Admin / Supervisor con rutas protegidas
+- Multi-tenant: orgId, TeamPage, JoinPage, claimInvite
+- Recordatorios diarios automatizados (Cloud Scheduler)
+- Dashboard con analytics
+- Eliminar flujos desde WorkflowsPage (botones siempre visibles)
+- Deploy en https://flowsync-e9709.web.app
+
+### 🔜 Pendiente / Ideas futuras
+- Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
+- WhatsApp integration (Twilio) — deferido
+- Filtros en el Kanban (por flujo, por fecha)
+- Exportar respuestas a CSV
+- Personalización de emails (logo del cliente)
+- Webhooks cuando un cliente termina
+
+---
+
 ## Notas técnicas importantes
 
 - `vite.config.js` tiene `'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'` — necesario para Google login popup
@@ -226,5 +246,8 @@ npm run dev
 - El flujo del cliente sigue edges desde nodo `start`, prefiere `sourceHandle === 'yes'` en condiciones
 - Functions usan `defineSecret` — valores inyectados en runtime, no en build time
 - `orgId` del admin = su `uid` (backward compat con docs viejos)
-- Storage path para KB: `kb/{workflowId}/{fileId}/{filename}`
-- Email from: `FlowSync <onboarding@resend.dev>` (dominio sandbox Resend — para producción verificar system.cl)
+- PowerShell: usar `@'...'@` here-strings (no `<<EOF`) para commits con mensajes multilínea
+- `builderKey` en WorkflowBuilderPage: se incrementa al seleccionar plantilla para forzar remount de WorkflowBuilder y que `useNodesState` se reinicialice con los nuevos nodos
+- Perfiles de clientes: por email (no por ejecución), persisten entre flujos del mismo org
+- `clients` Firestore: escritura pública (no autenticada) para que clientes puedan guardar perfil
+- `notifyClient`: sustituye `{{clientName}}` y `{{clientEmail}}` antes de llamar a `buildEmailHtml`
