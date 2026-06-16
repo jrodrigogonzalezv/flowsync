@@ -91,17 +91,17 @@ export default function WorkflowsPage() {
                 <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                   <GitBranch className="w-5 h-5 text-blue-800" />
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={e => handleDuplicate(e, w)}
-                    className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-300 hover:text-blue-700 transition-all"
+                    className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-200 hover:text-blue-700 transition-all"
                     title="Duplicar flujo"
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={e => handleDelete(e, w.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all"
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-200 hover:text-red-500 transition-all"
                     title="Eliminar flujo"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
