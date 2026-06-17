@@ -78,5 +78,9 @@ service cloud.firestore {
       allow read: if isAuth() && request.auth.token.email == email;
       allow write: if false;
     }
+
+    match /config/{docId} {
+      allow read, write: if isSuperAdmin();
+    }
   }
 }

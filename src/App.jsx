@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import LoginPage from './components/auth/LoginPage'
 import AppLayout from './components/layout/AppLayout'
@@ -17,6 +17,9 @@ import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import OrgDetailPage from './pages/superadmin/OrgDetailPage'
 import ExecutionDetailPage from './pages/superadmin/ExecutionDetailPage'
 import WorkflowDetailPage from './pages/superadmin/WorkflowDetailPage'
+import SADashboard from './pages/superadmin/SADashboard'
+import SASearch from './pages/superadmin/SASearch'
+import SASettings from './pages/superadmin/SASettings'
 
 const Spinner = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -24,16 +27,31 @@ const Spinner = () => (
   </div>
 )
 
-// Solo usuarios normales (no superadmin)
+function BlockedScreen() {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+  async function handleLogout() { await logout(); navigate('/login') }
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-3xl">🔒</div>
+        <h1 className="text-xl font-bold text-slate-900">Cuenta suspendida</h1>
+        <p className="text-sm text-slate-500 mt-2 leading-relaxed">Tu cuenta ha sido suspendida temporalmente. Contacta a soporte para más información.</p>
+        <button onClick={handleLogout} className="mt-6 text-sm text-slate-400 hover:text-red-600 transition-colors">Cerrar sesión</button>
+      </div>
+    </div>
+  )
+}
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
-  if (user.isSuperAdmin) return <Navigate to="/superadmin" replace />
+  if (user.isSuperAdmin) return <Navigate to="/superadmin/dashboard" replace />
+  if (user.orgBlocked) return <BlockedScreen />
   return children
 }
 
-// Solo superadmin
 function SuperAdminRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <Spinner />
@@ -50,6 +68,14 @@ function AdminRoute({ children }) {
   return children
 }
 
+function SARoute({ page }) {
+  return (
+    <SuperAdminRoute>
+      <SuperAdminLayout>{page}</SuperAdminLayout>
+    </SuperAdminRoute>
+  )
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -59,26 +85,14 @@ function AppRoutes() {
       <Route path="/join" element={<JoinPage />} />
 
       {/* Super admin — layout completamente separado */}
-      <Route path="/superadmin" element={
-        <SuperAdminRoute>
-          <SuperAdminLayout><SuperAdminPage /></SuperAdminLayout>
-        </SuperAdminRoute>
-      } />
-      <Route path="/superadmin/org/:orgId" element={
-        <SuperAdminRoute>
-          <SuperAdminLayout><OrgDetailPage /></SuperAdminLayout>
-        </SuperAdminRoute>
-      } />
-      <Route path="/superadmin/org/:orgId/execution/:execId" element={
-        <SuperAdminRoute>
-          <SuperAdminLayout><ExecutionDetailPage /></SuperAdminLayout>
-        </SuperAdminRoute>
-      } />
-      <Route path="/superadmin/org/:orgId/workflow/:workflowId" element={
-        <SuperAdminRoute>
-          <SuperAdminLayout><WorkflowDetailPage /></SuperAdminLayout>
-        </SuperAdminRoute>
-      } />
+      <Route path="/superadmin" element={<Navigate to="/superadmin/dashboard" replace />} />
+      <Route path="/superadmin/dashboard" element={<SARoute page={<SADashboard />} />} />
+      <Route path="/superadmin/orgs" element={<SARoute page={<SuperAdminPage />} />} />
+      <Route path="/superadmin/search" element={<SARoute page={<SASearch />} />} />
+      <Route path="/superadmin/settings" element={<SARoute page={<SASettings />} />} />
+      <Route path="/superadmin/org/:orgId" element={<SARoute page={<OrgDetailPage />} />} />
+      <Route path="/superadmin/org/:orgId/execution/:execId" element={<SARoute page={<ExecutionDetailPage />} />} />
+      <Route path="/superadmin/org/:orgId/workflow/:workflowId" element={<SARoute page={<WorkflowDetailPage />} />} />
 
       {/* App normal — usuarios y admins de empresas */}
       <Route path="/*" element={
