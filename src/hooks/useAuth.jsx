@@ -23,7 +23,17 @@ export function AuthProvider({ children }) {
           await ensureUserDoc(firebaseUser)
           const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
           const saSnap = await getDoc(doc(db, 'superAdmins', firebaseUser.email))
-          setUser({ ...firebaseUser, profile: snap.data() || {}, isSuperAdmin: saSnap.exists() })
+          let orgBlocked = false
+          if (!saSnap.exists()) {
+            const userData = snap.data() || {}
+            if (userData.orgId) {
+              try {
+                const orgSnap = await getDoc(doc(db, 'organizations', userData.orgId))
+                orgBlocked = orgSnap.data()?.blocked === true
+              } catch { /* ignore */ }
+            }
+          }
+          setUser({ ...firebaseUser, profile: snap.data() || {}, isSuperAdmin: saSnap.exists(), orgBlocked })
         } else {
           setUser(null)
         }

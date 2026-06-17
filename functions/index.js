@@ -397,6 +397,27 @@ exports.onExecutionComplete = onDocumentUpdated('executions/{executionId}', asyn
   }
 })
 
+// ─── emailOrgAdmin — super admin envía email a admin de una org ───────────────
+
+exports.emailOrgAdmin = onCall({ secrets: [resendApiKey] }, async (request) => {
+  const { toEmail, toName, subject, message } = request.data
+  if (!toEmail || !subject || !message) throw new HttpsError('invalid-argument', 'Faltan parámetros.')
+
+  await sendEmail({
+    to: toEmail,
+    subject,
+    fromName: 'FlowSync Admin',
+    html: buildEmailHtml({
+      title: subject,
+      name: toName || 'Administrador',
+      body: message,
+      cta: null,
+      link: null,
+    }),
+  })
+  return { sent: true }
+})
+
 // ─── Email template ───────────────────────────────────────────────────────────
 
 function buildEmailHtml({ title, name, body, cta, link }) {

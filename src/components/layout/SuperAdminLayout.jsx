@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { Zap, Shield, Building2, LogOut, UserCircle } from 'lucide-react'
+import { Zap, Shield, Building2, LogOut, Search, Settings, LayoutDashboard } from 'lucide-react'
+
+const NAV_ITEMS = [
+  { icon: LayoutDashboard, label: 'Dashboard',       to: '/superadmin/dashboard', exact: true },
+  { icon: Building2,       label: 'Organizaciones',  to: '/superadmin/orgs',      exact: false },
+  { icon: Search,          label: 'Buscar',          to: '/superadmin/search',    exact: false },
+  { icon: Settings,        label: 'Configuración',   to: '/superadmin/settings',  exact: false },
+]
 
 export default function SuperAdminLayout({ children }) {
   const { user, logout } = useAuth()
@@ -37,17 +44,25 @@ export default function SuperAdminLayout({ children }) {
           </div>
 
           {/* Nav */}
-          <nav className="flex items-center gap-1 flex-1">
-            <Link
-              to="/superadmin"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/superadmin'
-                  ? 'bg-purple-50 text-purple-800'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Building2 className="w-4 h-4" /> Organizaciones
-            </Link>
+          <nav className="hidden md:flex items-center gap-1 flex-1">
+            {NAV_ITEMS.map(({ icon: Icon, label, to, exact }) => {
+              const active = exact
+                ? location.pathname === to
+                : location.pathname.startsWith(to)
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-purple-50 text-purple-800'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" /> {label}
+                </Link>
+              )
+            })}
           </nav>
 
           {/* User menu */}
@@ -79,6 +94,24 @@ export default function SuperAdminLayout({ children }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Mobile nav */}
+        <div className="md:hidden border-t border-slate-100 px-4 py-2 flex gap-1 overflow-x-auto">
+          {NAV_ITEMS.map(({ icon: Icon, label, to, exact }) => {
+            const active = exact ? location.pathname === to : location.pathname.startsWith(to)
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                  active ? 'bg-purple-50 text-purple-800' : 'text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </Link>
+            )
+          })}
         </div>
       </header>
 
