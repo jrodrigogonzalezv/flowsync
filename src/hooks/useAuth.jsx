@@ -22,7 +22,8 @@ export function AuthProvider({ children }) {
         if (firebaseUser) {
           await ensureUserDoc(firebaseUser)
           const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-          setUser({ ...firebaseUser, profile: snap.data() || {} })
+          const saSnap = await getDoc(doc(db, 'superAdmins', firebaseUser.email))
+          setUser({ ...firebaseUser, profile: snap.data() || {}, isSuperAdmin: saSnap.exists() })
         } else {
           setUser(null)
         }

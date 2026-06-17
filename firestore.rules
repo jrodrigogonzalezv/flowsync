@@ -14,15 +14,18 @@ service cloud.firestore {
     function sameOrg(orgId) {
       return isAuth() && userProfile().orgId == orgId;
     }
+    function isSuperAdmin() {
+      return isAuth() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.token.email));
+    }
 
     match /organizations/{orgId} {
-      allow read: if isAuth() && sameOrg(orgId);
+      allow read: if (isAuth() && sameOrg(orgId)) || isSuperAdmin();
       allow create: if isAuth();
-      allow update: if isAdmin() && sameOrg(orgId);
+      allow update: if (isAdmin() && sameOrg(orgId)) || isSuperAdmin();
     }
 
     match /users/{userId} {
-      allow read: if isAuth() && (request.auth.uid == userId || sameOrg(resource.data.orgId));
+      allow read: if isAuth() && (request.auth.uid == userId || sameOrg(resource.data.orgId) || isSuperAdmin());
       allow create, update: if isAuth() && request.auth.uid == userId;
     }
 
@@ -37,7 +40,8 @@ service cloud.firestore {
       // unauthenticated clients need to read the workflow to complete flows
       allow read: if !isAuth() || (
         resource.data.userId == request.auth.uid ||
-        sameOrg(resource.data.orgId)
+        sameOrg(resource.data.orgId) ||
+        isSuperAdmin()
       );
       allow create: if isAdmin();
       allow update: if isAdmin() && (
@@ -53,7 +57,7 @@ service cloud.firestore {
 
     match /clients/{clientId} {
       // unauthenticated clients write their own profile from public flow page
-      allow read: if isAuth() && sameOrg(resource.data.orgId);
+      allow read: if (isAuth() && sameOrg(resource.data.orgId)) || isSuperAdmin();
       allow create, update: if true;
       allow delete: if isAdmin() && sameOrg(resource.data.orgId);
     }
@@ -69,6 +73,10 @@ service cloud.firestore {
         allow read, create: if true;
         allow update, delete: if false;
       }
+    }
+    match /superAdmins/{email} {
+      allow read: if isAuth() && request.auth.token.email == email;
+      allow write: if false;
     }
   }
 }
