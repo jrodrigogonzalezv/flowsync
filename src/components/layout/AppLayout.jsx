@@ -5,7 +5,7 @@ import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import {
   LayoutDashboard, GitBranch, Users, LogOut, Menu, X, Zap,
-  UsersRound, Shield, Bell, BarChart2, Settings, UserCircle, CheckCheck,
+  UsersRound, Shield, Bell, BarChart2, Settings, UserCircle, CheckCheck, Building2,
 } from 'lucide-react'
 
 const adminNav = [
@@ -38,7 +38,11 @@ export default function AppLayout({ children }) {
   const userMenuRef = useRef()
 
   const role = user?.profile?.role || 'supervisor'
-  const navItems = role === 'admin' ? adminNav : supervisorNav
+  const isSuperAdmin = user?.isSuperAdmin || false
+  const baseNav = role === 'admin' ? adminNav : supervisorNav
+  const navItems = isSuperAdmin
+    ? [{ icon: Building2, label: 'Super Admin', to: '/superadmin' }, ...baseNav]
+    : baseNav
   const orgId = user?.profile?.orgId || user?.uid
 
   // Unread notifications
@@ -86,9 +90,11 @@ export default function AppLayout({ children }) {
         {user?.displayName?.[0] || user?.email?.[0] || '?'}
       </div>
 
-  const roleBadge = role === 'admin'
-    ? <span className="hidden sm:flex items-center gap-1 text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-medium"><Shield className="w-3 h-3" /> Admin</span>
-    : <span className="hidden sm:flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">Supervisor</span>
+  const roleBadge = isSuperAdmin
+    ? <span className="hidden sm:flex items-center gap-1 text-xs text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full font-medium"><Shield className="w-3 h-3" /> Super Admin</span>
+    : role === 'admin'
+      ? <span className="hidden sm:flex items-center gap-1 text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-medium"><Shield className="w-3 h-3" /> Admin</span>
+      : <span className="hidden sm:flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">Supervisor</span>
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

@@ -12,6 +12,8 @@ import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import SuperAdminPage from './pages/superadmin/SuperAdminPage'
+import OrgDetailPage from './pages/superadmin/OrgDetailPage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -21,6 +23,14 @@ function PrivateRoute({ children }) {
     </div>
   )
   return user ? children : <Navigate to="/login" replace />
+}
+
+function SuperAdminRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+  if (!user.isSuperAdmin) return <Navigate to="/dashboard" replace />
+  return children
 }
 
 function AdminRoute({ children }) {
@@ -51,6 +61,8 @@ function AppRoutes() {
                 <Route path="/analytics" element={<AdminRoute><AnalyticsPage /></AdminRoute>} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+                <Route path="/superadmin" element={<SuperAdminRoute><SuperAdminPage /></SuperAdminRoute>} />
+                <Route path="/superadmin/org/:orgId" element={<SuperAdminRoute><OrgDetailPage /></SuperAdminRoute>} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </AppLayout>

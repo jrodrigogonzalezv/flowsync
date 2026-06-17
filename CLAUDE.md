@@ -251,6 +251,16 @@ npm run dev
   - Recordatorios de email NO se envían a status `review` (correcto por diseño)
 - Deploy en https://flowsync-e9709.web.app
 
+- **Super Admin** (`/superadmin`):
+  - Identificado por colección Firestore `superAdmins/{email}` (solo lectura desde cliente)
+  - `isSuperAdmin` en contexto de auth (`useAuth`)
+  - `SuperAdminRoute` en App.jsx — redirige a `/dashboard` si no es superadmin
+  - Badge "Super Admin" (púrpura) en navbar, link "Super Admin" como primer item del nav
+  - `/superadmin`: tabla de todas las orgs con stats (total, activas, trial, inactivas), admin email, supervisores, flujos, clientes, badge de plan
+  - `/superadmin/org/:orgId`: detalle de org — control de suscripción (trial/active/inactive/free + nota interna), admin, supervisores, flujos, clientes recientes (30)
+  - `organizations/{orgId}` tiene campos: `plan`, `planSince`, `planNote`
+  - Firestore rules: `isSuperAdmin()` permite leer todas las colecciones + update de organizations
+
 ### 🔜 Pendiente / Ideas futuras
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
 - WhatsApp integration (Twilio) — deferido
