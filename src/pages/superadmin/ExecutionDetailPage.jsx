@@ -85,39 +85,40 @@ export default function ExecutionDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      try {
-        const exSnap = await getDoc(doc(db, 'executions', execId))
-        if (!exSnap.exists()) { setLoading(false); return }
-        const ex = { id: exSnap.id, ...exSnap.data() }
-        setExecution(ex)
+      const exResult = await Promise.allSettled([getDoc(doc(db, 'executions', execId))])
+      const exSnap = exResult[0].status === 'fulfilled' ? exResult[0].value : null
+      if (!exSnap?.exists()) { setLoading(false); return }
 
-        const [wfSnap, profileSnap] = await Promise.all([
-          ex.workflowId ? getDoc(doc(db, 'workflows', ex.workflowId)) : Promise.resolve(null),
-          ex.clientEmail && ex.orgId
-            ? getDocs(query(collection(db, 'clients'), where('orgId', '==', ex.orgId), where('email', '==', ex.clientEmail)))
-            : Promise.resolve(null),
-        ])
+      const ex = { id: exSnap.id, ...exSnap.data() }
+      setExecution(ex)
 
-        if (wfSnap?.exists()) setWorkflow({ id: wfSnap.id, ...wfSnap.data() })
-        if (profileSnap && !profileSnap.empty) setProfile(profileSnap.docs[0].data())
+      const [wfResult, profileResult] = await Promise.allSettled([
+        ex.workflowId ? getDoc(doc(db, 'workflows', ex.workflowId)) : Promise.resolve(null),
+        ex.clientEmail && ex.orgId
+          ? getDocs(query(collection(db, 'clients'), where('orgId', '==', ex.orgId), where('email', '==', ex.clientEmail)))
+          : Promise.resolve(null),
+      ])
 
-        // Load download URLs for uploaded docs
-        const docs = ex.uploadedDocs || []
-        if (docs.length > 0) {
-          const urlMap = {}
-          await Promise.allSettled(
-            docs.map(async d => {
-              try {
-                const url = await getDownloadURL(ref(storage, d.storagePath))
-                urlMap[d.storagePath] = url
-              } catch { /* storage path may be invalid */ }
-            })
-          )
-          setDocUrls(urlMap)
-        }
-      } finally {
-        setLoading(false)
+      if (wfResult.status === 'fulfilled' && wfResult.value?.exists())
+        setWorkflow({ id: wfResult.value.id, ...wfResult.value.data() })
+      if (profileResult.status === 'fulfilled' && profileResult.value && !profileResult.value.empty)
+        setProfile(profileResult.value.docs[0].data())
+
+      const docs = ex.uploadedDocs || []
+      if (docs.length > 0) {
+        const urlMap = {}
+        await Promise.allSettled(
+          docs.map(async d => {
+            try {
+              const url = await getDownloadURL(ref(storage, d.storagePath))
+              urlMap[d.storagePath] = url
+            } catch { /* storage path may be invalid */ }
+          })
+        )
+        setDocUrls(urlMap)
       }
+
+      setLoading(false)
     }
     load()
   }, [execId, orgId])
