@@ -5,8 +5,9 @@ import { useAuth } from '../hooks/useAuth'
 import KanbanBoard from '../components/kanban/KanbanBoard'
 import InviteClientModal from '../components/kanban/InviteClientModal'
 import OperatorChatPanel from '../components/chat/OperatorChatPanel'
-import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle, FileText, ExternalLink, CheckCircle, RefreshCw } from 'lucide-react'
+import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle, FileText, ExternalLink, CheckCircle, RefreshCw, Sparkles, ChevronUp } from 'lucide-react'
 import { deleteDoc, updateDoc } from 'firebase/firestore'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 
 export default function ClientsPage() {
   const { user } = useAuth()
@@ -214,6 +215,9 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
   const [workflow, setWorkflow] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null) // 'archive' | 'delete'
   const [acting, setActing] = useState(false)
+  const [aiState, setAiState] = useState('idle') // 'idle' | 'loading' | 'done' | 'error'
+  const [aiResult, setAiResult] = useState('')
+  const [showAiResult, setShowAiResult] = useState(false)
 
   async function handleArchive() {
     setActing(true)
@@ -286,6 +290,46 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
     })
     setActing(false)
     onClose()
+  }
+
+  async function analyzeWithAI() {
+    setAiState('loading')
+    setShowAiResult(true)
+    try {
+      const aiNode = (workflow?.nodes || []).find(n => n.type === 'ai')
+      const formattedResponses = Object.entries(execution.responses || {})
+        .filter(([, data]) => data && typeof data === 'object')
+        .map(([nodeId, data]) => {
+          const node = (workflow?.nodes || []).find(n => n.id === nodeId)
+          const nodeName = node?.data?.label || 'Paso'
+          const fields = node?.data?.fields || []
+          const lines = Object.entries(data)
+            .filter(([k]) => k !== 'aiResult' && k !== 'fileCount')
+            .map(([k, v]) => {
+              const field = fields.find(f => f.id === k)
+              return `- ${field?.label || k}: ${v}`
+            })
+            .join('\n')
+          return lines ? `${nodeName}:\n${lines}` : null
+        })
+        .filter(Boolean)
+        .join('\n\n')
+
+      const fns = getFunctions()
+      const analyze = httpsCallable(fns, 'analyzeFlow')
+      const result = await analyze({
+        formattedResponses,
+        aiPrompt: aiNode?.data?.aiPrompt || 'Analiza la información del cliente y los documentos entregados. Determina si cumple con los requisitos y entrega un resumen de evaluación.',
+        knowledgeBase: [
+          workflow?.knowledgeBase || '',
+          ...(workflow?.knowledgeBaseFiles || []).map(f => f.extractedText || ''),
+        ].filter(Boolean).join('\n\n---\n\n'),
+      })
+      setAiResult(result.data.result)
+      setAiState('done')
+    } catch {
+      setAiState('error')
+    }
   }
 
   const responseEntries = Object.entries(execution.responses || {}).filter(([, data]) => {
@@ -415,6 +459,38 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
             </div>
           )}
 
+          {/* AI analysis result */}
+          {showAiResult && (
+            <div className="border border-violet-200 rounded-xl overflow-hidden">
+              <button
+                onClick={() => setShowAiResult(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-violet-50 hover:bg-violet-100 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                  <span className="text-xs font-semibold text-violet-700 uppercase tracking-wider">Análisis IA</span>
+                </div>
+                <ChevronUp className="w-3.5 h-3.5 text-violet-400" />
+              </button>
+              <div className="px-4 py-3 bg-white">
+                {aiState === 'loading' && (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
+                    <span className="text-sm text-slate-500">Analizando información del cliente...</span>
+                  </div>
+                )}
+                {aiState === 'error' && (
+                  <p className="text-sm text-red-600">No se pudo completar el análisis. Intenta de nuevo.</p>
+                )}
+                {aiState === 'done' && aiResult.split('\n').map((line, i) => (
+                  line.trim()
+                    ? <p key={i} className="text-sm text-slate-700 leading-relaxed mb-2 last:mb-0">{line}</p>
+                    : <br key={i} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Responses */}
           {responseEntries.length > 0 && (
             <div>
@@ -487,6 +563,16 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
 
           {!confirmAction && execution.status === 'review' && !execution.archived && (
             <div className="space-y-2 mb-2">
+              <button
+                onClick={analyzeWithAI}
+                disabled={aiState === 'loading'}
+                className="w-full flex items-center justify-center gap-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200 hover:border-violet-300 text-violet-700 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {aiState === 'loading'
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando...</>
+                  : <><Sparkles className="w-4 h-4" /> {aiState === 'done' ? 'Re-evaluar con IA' : 'Evaluar con IA'}</>
+                }
+              </button>
               <button
                 onClick={handleApprove}
                 disabled={acting}
