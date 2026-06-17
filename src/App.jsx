@@ -14,6 +14,8 @@ import SettingsPage from './pages/SettingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import OrgDetailPage from './pages/superadmin/OrgDetailPage'
+import ExecutionDetailPage from './pages/superadmin/ExecutionDetailPage'
+import WorkflowDetailPage from './pages/superadmin/WorkflowDetailPage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -63,6 +65,8 @@ function AppRoutes() {
                 <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
                 <Route path="/superadmin" element={<SuperAdminRoute><SuperAdminPage /></SuperAdminRoute>} />
                 <Route path="/superadmin/org/:orgId" element={<SuperAdminRoute><OrgDetailPage /></SuperAdminRoute>} />
+                <Route path="/superadmin/org/:orgId/execution/:execId" element={<SuperAdminRoute><ExecutionDetailPage /></SuperAdminRoute>} />
+                <Route path="/superadmin/org/:orgId/workflow/:workflowId" element={<SuperAdminRoute><WorkflowDetailPage /></SuperAdminRoute>} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </AppLayout>

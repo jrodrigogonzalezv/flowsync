@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  collection, getDocs, getDoc, doc, query, where, orderBy, limit, updateDoc, serverTimestamp,
+  collection, getDocs, getDoc, doc, query, where, orderBy, updateDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import { ArrowLeft, Building2, Users, GitBranch, User, Save } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Building2, Users, GitBranch, User, Save, ChevronRight } from 'lucide-react'
 
 const PLAN_CONFIG = {
   trial:    { label: 'Trial',    bg: 'bg-amber-100',   text: 'text-amber-700',   border: 'border-amber-300'   },
@@ -18,6 +19,7 @@ const STATUS_LABELS = {
   in_progress: { label: 'En progreso',  bg: 'bg-blue-100',    text: 'text-blue-700'    },
   completed:   { label: 'Completado',   bg: 'bg-emerald-100', text: 'text-emerald-700' },
   review:      { label: 'En revisión',  bg: 'bg-amber-100',   text: 'text-amber-700'   },
+  archived:    { label: 'Archivado',    bg: 'bg-slate-100',   text: 'text-slate-400'   },
 }
 
 function formatDate(ts) {
@@ -57,7 +59,7 @@ export default function OrgDetailPage() {
           getDoc(doc(db, 'organizations', orgId)),
           getDocs(query(collection(db, 'users'), where('orgId', '==', orgId))),
           getDocs(query(collection(db, 'workflows'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'))),
-          getDocs(query(collection(db, 'executions'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'), limit(30))),
+          getDocs(query(collection(db, 'executions'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'))),
         ])
         if (orgSnap.exists()) {
           const data = { id: orgSnap.id, ...orgSnap.data() }
@@ -227,12 +229,18 @@ export default function OrgDetailPage() {
         ) : (
           <div className="divide-y divide-slate-50">
             {workflows.map(wf => (
-              <div key={wf.id} className="flex items-center gap-3 px-5 py-3">
+              <div key={wf.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-800 font-medium truncate">{wf.name}</p>
                   <p className="text-xs text-slate-400">{wf.nodes?.length || 0} nodos</p>
                 </div>
-                <p className="text-xs text-slate-400 flex-shrink-0">{formatDate(wf.createdAt)}</p>
+                <p className="text-xs text-slate-400 flex-shrink-0 mr-3">{formatDate(wf.createdAt)}</p>
+                <Link
+                  to={`/superadmin/org/${orgId}/workflow/${wf.id}`}
+                  className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium flex-shrink-0"
+                >
+                  Ver <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             ))}
           </div>
@@ -243,7 +251,7 @@ export default function OrgDetailPage() {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-sm font-semibold text-slate-900">
-            Clientes {executions.length === 30 ? '(últimos 30)' : `(${executions.length})`}
+            Clientes ({executions.length})
           </h2>
         </div>
         {executions.length === 0 ? (
@@ -256,14 +264,15 @@ export default function OrgDetailPage() {
                   <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500">Cliente</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Flujo</th>
                   <th className="text-center px-4 py-2.5 text-xs font-semibold text-slate-500">Estado</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500">Fecha</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">Fecha</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {executions.map(ex => {
-                  const s = STATUS_LABELS[ex.status] || STATUS_LABELS.invited
+                  const s = STATUS_LABELS[ex.archived ? 'archived' : ex.status] || STATUS_LABELS.invited
                   return (
-                    <tr key={ex.id} className="hover:bg-slate-50">
+                    <tr key={ex.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-5 py-2.5">
                         <p className="font-medium text-slate-800">{ex.clientName}</p>
                         <p className="text-xs text-slate-400">{ex.clientEmail}</p>
@@ -274,7 +283,15 @@ export default function OrgDetailPage() {
                           {s.label}
                         </span>
                       </td>
-                      <td className="px-5 py-2.5 text-right text-xs text-slate-400">{formatDate(ex.createdAt)}</td>
+                      <td className="px-4 py-2.5 text-right text-xs text-slate-400 whitespace-nowrap">{formatDate(ex.createdAt)}</td>
+                      <td className="px-4 py-2.5">
+                        <Link
+                          to={`/superadmin/org/${orgId}/execution/${ex.id}`}
+                          className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium whitespace-nowrap"
+                        >
+                          Ver <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </td>
                     </tr>
                   )
                 })}
