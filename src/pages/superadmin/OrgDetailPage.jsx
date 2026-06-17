@@ -54,25 +54,29 @@ export default function OrgDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      try {
-        const [orgSnap, usersSnap, wfSnap, exSnap] = await Promise.all([
-          getDoc(doc(db, 'organizations', orgId)),
-          getDocs(query(collection(db, 'users'), where('orgId', '==', orgId))),
-          getDocs(query(collection(db, 'workflows'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'))),
-          getDocs(query(collection(db, 'executions'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'))),
-        ])
-        if (orgSnap.exists()) {
-          const data = { id: orgSnap.id, ...orgSnap.data() }
-          setOrg(data)
-          setPlan(data.plan || 'free')
-          setPlanNote(data.planNote || '')
-        }
-        setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-        setWorkflows(wfSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-        setExecutions(exSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      } finally {
-        setLoading(false)
+      const [orgResult, usersResult, wfResult, exResult] = await Promise.allSettled([
+        getDoc(doc(db, 'organizations', orgId)),
+        getDocs(query(collection(db, 'users'), where('orgId', '==', orgId))),
+        getDocs(query(collection(db, 'workflows'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'))),
+        getDocs(query(collection(db, 'executions'), where('orgId', '==', orgId), orderBy('createdAt', 'desc'))),
+      ])
+
+      if (orgResult.status === 'fulfilled' && orgResult.value.exists()) {
+        const data = { id: orgResult.value.id, ...orgResult.value.data() }
+        setOrg(data)
+        setPlan(data.plan || 'free')
+        setPlanNote(data.planNote || '')
+      } else if (orgResult.status === 'rejected') {
+        console.error('Error cargando organización:', orgResult.reason)
       }
+      if (usersResult.status === 'fulfilled')
+        setUsers(usersResult.value.docs.map(d => ({ id: d.id, ...d.data() })))
+      if (wfResult.status === 'fulfilled')
+        setWorkflows(wfResult.value.docs.map(d => ({ id: d.id, ...d.data() })))
+      if (exResult.status === 'fulfilled')
+        setExecutions(exResult.value.docs.map(d => ({ id: d.id, ...d.data() })))
+
+      setLoading(false)
     }
     load()
   }, [orgId])
