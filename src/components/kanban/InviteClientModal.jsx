@@ -3,16 +3,17 @@ import { collection, getDocs, query, where, doc, setDoc, serverTimestamp } from 
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
-import { X, Copy, Check, Loader2, Mail, Link } from 'lucide-react'
+import { X, Copy, Check, Loader2, Mail, Link, MessageCircle } from 'lucide-react'
 
 export default function InviteClientModal({ onClose, onCreated, preselectedWorkflow }) {
   const { user } = useAuth()
   const [workflows, setWorkflows] = useState(preselectedWorkflow ? [preselectedWorkflow] : [])
-  const [form, setForm] = useState({ clientName: '', clientEmail: '', workflowId: preselectedWorkflow?.id || '' })
+  const [form, setForm] = useState({ clientName: '', clientEmail: '', clientPhone: '', workflowId: preselectedWorkflow?.id || '' })
   const [link, setLink] = useState('')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [emailStatus, setEmailStatus] = useState(null)
+  const [waStatus, setWaStatus] = useState(null)
 
   useEffect(() => {
     if (preselectedWorkflow) return
@@ -47,9 +48,10 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
       setLink(generatedLink)
       onCreated?.()
 
-      // Try to send email — non-blocking, graceful failure
+      const fns = getFunctions()
+
+      // Email — non-blocking
       try {
-        const fns = getFunctions()
         const sendEmail = httpsCallable(fns, 'sendInviteEmail')
         const result = await sendEmail({
           clientName: form.clientName,
@@ -61,6 +63,22 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
         setEmailStatus(result.data?.sent ? 'sent' : 'not_configured')
       } catch {
         setEmailStatus('error')
+      }
+
+      // WhatsApp — solo si hay teléfono
+      if (form.clientPhone) {
+        try {
+          const sendWa = httpsCallable(fns, 'sendWhatsappInvite')
+          await sendWa({
+            clientPhone: form.clientPhone,
+            clientName: form.clientName,
+            workflowName: workflow?.name || '',
+            flowLink: generatedLink,
+          })
+          setWaStatus('sent')
+        } catch {
+          setWaStatus('error')
+        }
       }
     } finally {
       setLoading(false)
@@ -100,6 +118,26 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
                   />
                 </div>
               ))}
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1.5">
+                  WhatsApp <span className="text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <span className="flex items-center px-3 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-500 flex-shrink-0">🇨🇱 +56</span>
+                  <input
+                    type="tel"
+                    placeholder="912345678"
+                    value={form.clientPhone}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '')
+                      setForm(f => ({ ...f, clientPhone: raw ? `+56${raw}` : '' }))
+                    }}
+                    className="flex-1 border border-slate-300 text-slate-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Si lo ingresas, también enviamos el link por WhatsApp.</p>
+              </div>
+
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1.5">Flujo a asignar</label>
                 <select
@@ -145,6 +183,21 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
                   <div>
                     <p className="text-amber-700 text-sm font-medium">Email no enviado</p>
                     <p className="text-amber-600 text-xs mt-0.5">Comparte el link manualmente.</p>
+                  </div>
+                </div>
+              )}
+              {waStatus === 'sent' && (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-4">
+                  <MessageCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span className="text-emerald-700 text-sm font-medium">WhatsApp enviado a {form.clientPhone}</span>
+                </div>
+              )}
+              {waStatus === 'error' && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+                  <MessageCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-amber-700 text-sm font-medium">WhatsApp no enviado</p>
+                    <p className="text-amber-600 text-xs mt-0.5">Verifica que el número esté registrado en el sandbox.</p>
                   </div>
                 </div>
               )}

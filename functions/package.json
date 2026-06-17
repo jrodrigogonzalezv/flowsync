@@ -16,6 +16,7 @@
     "mammoth": "^1.12.0",
     "nodemailer": "^6.9.0",
     "pdf-parse": "^2.4.5",
-    "resend": "^6.12.4"
+    "resend": "^6.12.4",
+    "twilio": "^6.0.2"
   }
 }

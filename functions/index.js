@@ -10,6 +10,8 @@ if (!admin.apps.length) admin.initializeApp()
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY')
 const resendApiKey = defineSecret('RESEND_API_KEY')
+const twilioAccountSid = defineSecret('TWILIO_ACCOUNT_SID')
+const twilioAuthToken = defineSecret('TWILIO_AUTH_TOKEN')
 
 // ─── Email helper (Resend) ────────────────────────────────────────────────────
 
@@ -78,6 +80,39 @@ exports.notifyClient = onCall({ secrets: [resendApiKey], invoker: 'public' }, as
   })
   return { sent: true }
 })
+
+// ─── sendWhatsappInvite ───────────────────────────────────────────────────────
+
+exports.sendWhatsappInvite = onCall(
+  { secrets: [twilioAccountSid, twilioAuthToken] },
+  async (request) => {
+    const { clientPhone, clientName, workflowName, flowLink } = request.data
+    if (!clientPhone) throw new HttpsError('invalid-argument', 'Falta el teléfono.')
+
+    const twilio = require('twilio')
+    const client = twilio(twilioAccountSid.value(), twilioAuthToken.value())
+
+    const name = clientName || 'Cliente'
+    const body = [
+      `Hola ${name} 👋`,
+      ``,
+      `*FlowSync* te invita a completar el proceso *"${workflowName}"*.`,
+      ``,
+      `Haz clic aquí para comenzar:`,
+      flowLink,
+      ``,
+      `_Este link es personal y único para ti._`,
+    ].join('\n')
+
+    await client.messages.create({
+      from: 'whatsapp:+14155238886',
+      to: `whatsapp:${clientPhone}`,
+      body,
+    })
+
+    return { sent: true }
+  }
+)
 
 // ─── extractKnowledgeBaseFile ─────────────────────────────────────────────────
 
