@@ -206,7 +206,7 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-16 — actualizado)
+## Estado actual (2026-06-16 — actualizado sesión 2)
 
 ### ✅ Completado
 - Login (Google OAuth + email/password)
@@ -260,6 +260,22 @@ npm run dev
   - `/superadmin/org/:orgId`: detalle de org — control de suscripción (trial/active/inactive/free + nota interna), admin, supervisores, flujos, clientes recientes (30)
   - `organizations/{orgId}` tiene campos: `plan`, `planSince`, `planNote`
   - Firestore rules: `isSuperAdmin()` permite leer todas las colecciones + update de organizations
+  - `SuperAdminLayout` con nav completo: Dashboard, Organizaciones, Buscar, Configuración (acento púrpura)
+  - Layout super admin completamente separado del app layout; rutas bajo `/superadmin/*`
+  - `SADashboard`: MRR real (sum de prices[plan] de saasSettings), señales de churn (sin flujos, sin clientes, trial expirando, inactivos 30d+), nuevas orgs del mes
+  - `SASearch`: búsqueda global de usuarios y organizaciones por nombre/email
+  - `SASettings`: precios por plan, moneda (USD/CLP/EUR), días trial, preview MRR en vivo. Lee/escribe `config/saasSettings`
+  - `OrgDetailPage` mejorado:
+    - Bloqueo/desbloqueo de orgs: botón "Suspender"/"Desbloquear" + diálogo confirmación + banner rojo cuando está bloqueada
+    - `orgBlocked` en useAuth → muestra `BlockedScreen` a usuarios de orgs bloqueadas
+    - Historial de notas internas: input + botón Agregar, guarda con `arrayUnion` en `organizations.notes[]` (formato `{text, by, at}`)
+    - Modal "Email al admin": llama a Cloud Function `emailOrgAdmin`
+    - Back nav corregido a `/superadmin/orgs`
+  - `emailOrgAdmin`: nueva Cloud Function onCall, envía email al admin de una org usando Resend
+  - `firestore.rules`: regla `config` collection (solo superadmin puede leer/escribir)
+  - `firestore.indexes.json`: índices compuestos para `executions(orgId+createdAt)` y `workflows(orgId+createdAt)`
+  - `superAdmins/{email}` en Firestore: doc de lectura del cliente para detectar superadmin al login
+  - Documento `superAdmins/rodrigo@system.cl` creado vía REST API con gcloud auth token
 
 ### 🔜 Pendiente / Ideas futuras
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
