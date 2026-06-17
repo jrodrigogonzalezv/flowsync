@@ -32,7 +32,7 @@ async function sendEmail({ to, subject, html, fromName = 'FlowSync' }) {
 
 // ─── analyzeFlow ─────────────────────────────────────────────────────────────
 
-exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
+exports.analyzeFlow = onCall({ secrets: [geminiApiKey], invoker: 'public' }, async (request) => {
   const { responses, formattedResponses: preFormatted, aiPrompt, knowledgeBase } = request.data
   if (!aiPrompt) throw new HttpsError('invalid-argument', 'Faltan datos para el análisis.')
 
@@ -55,7 +55,7 @@ exports.analyzeFlow = onCall({ secrets: [geminiApiKey] }, async (request) => {
 
 // ─── notifyClient — envía email al cliente desde un nodo Notificación ─────────
 
-exports.notifyClient = onCall({ secrets: [resendApiKey] }, async (request) => {
+exports.notifyClient = onCall({ secrets: [resendApiKey], invoker: 'public' }, async (request) => {
   const { clientEmail, clientName, subject, message } = request.data
   if (!clientEmail) throw new HttpsError('invalid-argument', 'Falta el email del cliente.')
 
@@ -156,7 +156,7 @@ exports.sendTeamInvite = onCall({ secrets: [resendApiKey] }, async (request) => 
 
 // ─── resendFlowLink ───────────────────────────────────────────────────────────
 
-exports.resendFlowLink = onCall({ secrets: [resendApiKey] }, async (request) => {
+exports.resendFlowLink = onCall({ secrets: [resendApiKey], invoker: 'public' }, async (request) => {
   const { email } = request.data
   if (!email) throw new HttpsError('invalid-argument', 'Falta el email.')
 
