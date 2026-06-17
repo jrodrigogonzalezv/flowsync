@@ -277,6 +277,14 @@ npm run dev
   - `superAdmins/{email}` en Firestore: doc de lectura del cliente para detectar superadmin al login
   - Documento `superAdmins/rodrigo@system.cl` creado vía REST API con gcloud auth token
 
+- **WhatsApp via Twilio Sandbox:**
+  - Campo teléfono opcional en `InviteClientModal` (prefijo +56 automático)
+  - Cloud Function `sendWhatsappInvite` con secrets `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`
+  - Sandbox number: `whatsapp:+14155238886` · Join code: `join 250562`
+  - Credenciales Twilio: SID y Auth Token guardados en Firebase Secret Manager (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+  - Para producción: cambiar el número en `functions/index.js` por número propio aprobado por Meta
+  - Requisito sandbox: el cliente debe enviar `join 250562` a `+14155238886` una vez antes de recibir mensajes
+
 ### 🔜 Pendiente / Ideas futuras
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
 - WhatsApp integration (Twilio) — deferido
