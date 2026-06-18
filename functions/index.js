@@ -84,13 +84,13 @@ exports.notifyClient = onCall({ secrets: [resendApiKey], invoker: 'public' }, as
 // ─── sendWhatsappInvite ───────────────────────────────────────────────────────
 
 exports.sendWhatsappInvite = onCall(
-  { secrets: [twilioAccountSid, twilioAuthToken] },
+  { secrets: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'] },
   async (request) => {
     const { clientPhone, clientName, workflowName, flowLink } = request.data
     if (!clientPhone) throw new HttpsError('invalid-argument', 'Falta el teléfono.')
 
     const twilio = require('twilio')
-    const client = twilio(twilioAccountSid.value(), twilioAuthToken.value())
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
 
     const name = clientName || 'Cliente'
     const body = [
