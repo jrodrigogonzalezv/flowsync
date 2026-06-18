@@ -197,7 +197,7 @@ export default function ClientsPage() {
       )}
 
       {showInvite && (
-        <InviteClientModal onClose={() => setShowInvite(false)} onCreated={() => {}} />
+        <InviteClientModal onClose={() => setShowInvite(false)} onCreated={() => { setFilterWorkflowId(''); setSearchQuery(''); setShowArchived(false) }} />
       )}
 
       {selectedExec && selectedExec.humanSupportRequested && selectedExec.status !== 'completed' ? (

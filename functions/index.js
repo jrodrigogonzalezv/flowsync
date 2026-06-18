@@ -104,11 +104,17 @@ exports.sendWhatsappInvite = onCall(
       `_Este link es personal y único para ti._`,
     ].join('\n')
 
-    await client.messages.create({
-      from: 'whatsapp:+14155238886',
-      to: `whatsapp:${clientPhone}`,
-      body,
-    })
+    try {
+      const msg = await client.messages.create({
+        from: 'whatsapp:+14155238886',
+        to: `whatsapp:${clientPhone}`,
+        body,
+      })
+      console.log('WhatsApp sent:', msg.sid, 'status:', msg.status)
+    } catch (err) {
+      console.error('Twilio error:', err.message, 'code:', err.code)
+      throw new HttpsError('internal', err.message)
+    }
 
     return { sent: true }
   }
