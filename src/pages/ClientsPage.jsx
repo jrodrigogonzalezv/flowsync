@@ -197,7 +197,7 @@ export default function ClientsPage() {
       )}
 
       {showInvite && (
-        <InviteClientModal onClose={() => setShowInvite(false)} onCreated={() => setShowInvite(false)} />
+        <InviteClientModal onClose={() => setShowInvite(false)} onCreated={() => {}} />
       )}
 
       {selectedExec && selectedExec.humanSupportRequested && selectedExec.status !== 'completed' ? (
