@@ -206,9 +206,14 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-18 — actualizado sesión 3)
+## Estado actual (2026-06-18 — actualizado sesión 4)
 
-### ✅ Completado
+### 🌿 Rama activa: `feature/world-class-ux`
+Rama separada de `main`. Contiene mejoras de UX/datos sin tocar funcionalidad existente.
+Para continuar en otro equipo: `git fetch && git checkout feature/world-class-ux`
+Para volver a main si no convence: `git checkout main`
+
+### ✅ Completado (sesión 4 — rama feature/world-class-ux)
 - Login (Google OAuth + email/password)
 - Builder visual de flujos (drag-and-drop, 6 tipos de nodos)
   - Nodo Inicio: no se puede duplicar (guard en onDrop + sidebar disabled)
@@ -250,6 +255,29 @@ npm run dev
   - Notificación interna `docs_submitted` al subir documentos
   - Recordatorios de email NO se envían a status `review` (correcto por diseño)
 - Deploy en https://flowsync-e9709.web.app
+
+- **Portal cliente + magic link auth** (sesión 3, en `main`):
+  - Clientes pueden crear cuenta opcional vía magic link (passwordless email)
+  - Banner en `/flow/:id` con botón "Crear cuenta" → envía magic link a `execution.clientEmail`
+  - `/portal` — lista todos los flujos asignados al cliente autenticado
+  - `ensureUserDoc` en useAuth distingue sign-in de cliente vs admin (localStorage flag `flowsync_client_signin` + pathname `/portal`)
+  - Clientes crean doc `users/{uid}` con `role: 'client'` sin organización
+  - `PrivateRoute` redirige `role: 'client'` a `/portal`
+  - **PENDIENTE**: habilitar "Email link (passwordless sign-in)" en Firebase Console → Authentication → Sign-in method
+
+- **UX world-class** (sesión 4, rama `feature/world-class-ux`):
+  - `ClientProfileForm`: nombre completo dividido (firstName / paternalLastName / maternalLastName),
+    domicilio estructurado (calle, número, depto, ciudad, región — select 16 regiones de Chile — país),
+    fecha de nacimiento, género, nacionalidad. Empresa: razón social + nombre representante (nombre+apellido).
+    Guarda campos backward-compatible `name` y `address` + nuevos campos granulares en Firestore `clients`.
+  - `FlowNode`: rediseño estilo n8n — barra de color lateral, nodo ~65px alto (vs ~120px anterior),
+    sin descripción en canvas (solo en panel de config), pills de opciones para nodos decisión
+  - `WorkflowBuilder`: `fitViewOptions={{ maxZoom: 0.85, padding: 0.4 }}` para zoom inicial razonable;
+    botón `+` al hover de nodo → `QuickAddPopup` → agrega nodo conectado en posición y+130px;
+    sidebar colapsable con botón chevron (muestra íconos en modo colapsado)
+  - `NodeSidebar`: acepta props `isOpen`/`onToggle`, íconos emoji en modo colapsado
+  - `QuickAddPopup`: nuevo componente `src/components/builder/QuickAddPopup.jsx`
+  - `workflowTemplates.js`: posiciones Y comprimidas ~33% (factor 0.66) en los 10 templates
 
 - **Super Admin** (`/superadmin`):
   - Identificado por colección Firestore `superAdmins/{email}` (solo lectura desde cliente)
@@ -293,6 +321,9 @@ npm run dev
     - `sendWhatsappInvite` usa `process.env` (secret latest version) + logs para debug
 
 ### 🔜 Pendiente / Ideas futuras
+- **Merge `feature/world-class-ux` a main** cuando se apruebe después de pruebas en producción
+- Habilitar "Email link (passwordless sign-in)" en Firebase Console para que magic link funcione
+- Mostrar campos nuevos del perfil (firstName, region, etc.) en superadmin ExecutionDetailPage
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
 - WhatsApp integration (Twilio) — deferido
 - Filtros en el Kanban (por flujo, por fecha)
