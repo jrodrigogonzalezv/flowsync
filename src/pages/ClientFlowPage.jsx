@@ -149,6 +149,14 @@ export default function ClientFlowPage() {
       navigationHistory: [...(execution.navigationHistory || []), historyEntry],
       updatedAt: serverTimestamp(),
     })
+    setExecution(prev => ({
+      ...prev,
+      responses: { ...(prev.responses || {}), [currentNode.id]: { chosenOptionId: option.id, chosenOptionLabel: option.label } },
+      currentNodeId: isEnd ? null : nextNode.id,
+      currentNodeIndex: (prev.currentNodeIndex ?? 0) + 1,
+      completedNodes: newCompleted,
+      status: isEnd ? 'completed' : 'in_progress',
+    }))
   }
 
   function formatResponsesForAI() {
@@ -219,6 +227,15 @@ export default function ClientFlowPage() {
           navigationHistory: [...(execution.navigationHistory || []), historyEntry],
           updatedAt: serverTimestamp(),
         })
+        setExecution(prev => ({
+          ...prev,
+          responses: { ...(prev.responses || {}), [currentNode.id]: { fileCount: uploadedFiles.length } },
+          uploadedDocs: [...(prev.uploadedDocs || []), ...uploadedFiles.map(f => ({ ...f, nodeId: currentNode.id }))],
+          currentNodeId: nextNode?.id ?? null,
+          currentNodeIndex: (prev.currentNodeIndex ?? 0) + 1,
+          completedNodes: newCompleted,
+          status: 'review',
+        }))
       } finally { setSubmitting(false) }
       return
     }
@@ -257,6 +274,14 @@ export default function ClientFlowPage() {
         navigationHistory: [...(execution.navigationHistory || []), historyEntry],
         updatedAt: serverTimestamp(),
       })
+      setExecution(prev => ({
+        ...prev,
+        responses: { ...(prev.responses || {}), [currentNode.id]: stepResponses },
+        currentNodeId: isEnd ? null : nextNode?.id ?? null,
+        currentNodeIndex: (prev.currentNodeIndex ?? 0) + 1,
+        completedNodes: newCompleted,
+        status: isEnd ? 'completed' : 'in_progress',
+      }))
     } finally { setSubmitting(false) }
   }
 
@@ -378,11 +403,12 @@ export default function ClientFlowPage() {
                 onContinue={() => handleSubmit({})}
               />
             : currentNode?.type === 'condition'
-            ? <ConditionStep node={currentNode} onChoose={handleDecision} />
+            ? <ConditionStep key={currentNode.id} node={currentNode} onChoose={handleDecision} />
             : currentNode?.type === 'decision'
-            ? <DecisionStep node={currentNode} onChoose={handleDecision} />
+            ? <DecisionStep key={currentNode.id} node={currentNode} onChoose={handleDecision} />
             : currentNode
             ? <FlowStep
+                key={currentNode.id}
                 step={currentNode}
                 stepNumber={(execution?.completedNodes || 0) + 1}
                 totalSteps={execution?.totalNodes || 0}
