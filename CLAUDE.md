@@ -206,7 +206,7 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-16 — actualizado sesión 2)
+## Estado actual (2026-06-18 — actualizado sesión 3)
 
 ### ✅ Completado
 - Login (Google OAuth + email/password)
@@ -284,6 +284,13 @@ npm run dev
   - Credenciales Twilio: SID y Auth Token guardados en Firebase Secret Manager (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
   - Para producción: cambiar el número en `functions/index.js` por número propio aprobado por Meta
   - Requisito sandbox: el cliente debe enviar `join 250562` a `+14155238886` una vez antes de recibir mensajes
+  - Bugs corregidos (2026-06-17):
+    - Input teléfono ya no duplicaba prefijo `+56` al escribir
+    - Modal no se cerraba prematuramente antes de mostrar estado email/WhatsApp
+    - Spinner visible mientras se envía la invitación
+    - Modal se cierra automáticamente a los 2.5s para que el Kanban quede visible
+    - Filtros del Kanban se limpian al abrir InviteClientModal
+    - `sendWhatsappInvite` usa `process.env` (secret latest version) + logs para debug
 
 ### 🔜 Pendiente / Ideas futuras
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
