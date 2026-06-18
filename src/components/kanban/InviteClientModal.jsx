@@ -82,6 +82,7 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
       }
     } finally {
       setLoading(false)
+      setTimeout(onClose, 2500)
     }
   }
 
