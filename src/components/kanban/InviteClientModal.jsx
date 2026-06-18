@@ -127,7 +127,7 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
                   <input
                     type="tel"
                     placeholder="912345678"
-                    value={form.clientPhone}
+                    value={form.clientPhone.replace(/^\+56/, '')}
                     onChange={e => {
                       const raw = e.target.value.replace(/\D/g, '')
                       setForm(f => ({ ...f, clientPhone: raw ? `+56${raw}` : '' }))
