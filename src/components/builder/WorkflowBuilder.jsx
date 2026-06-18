@@ -8,10 +8,14 @@ import '@xyflow/react/dist/style.css'
 import NodeSidebar from './NodeSidebar'
 import NodeConfigPanel from './NodeConfigPanel'
 import FlowNode from './nodes/FlowNode'
-import { Save, Loader2, Layers } from 'lucide-react'
+import QuickAddPopup from './QuickAddPopup'
+import { Save, Loader2, Layers, Plus } from 'lucide-react'
 import TemplateModal from './TemplateModal'
 
-const nodeTypes = { start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode, decision: FlowNode, notification: FlowNode, end: FlowNode }
+const nodeTypes = {
+  start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode,
+  decision: FlowNode, notification: FlowNode, upload: FlowNode, end: FlowNode,
+}
 
 const initialNodes = [
   { id: 'start-1', type: 'start', position: { x: 300, y: 80 }, data: { label: 'Inicio' } },
@@ -24,7 +28,6 @@ function maxIdCounter(nodes) {
   }, 1)
 }
 
-// Rendered inside <ReactFlow> so it has valid zustand context
 function DecisionHandleUpdater({ nodes }) {
   const updateNodeInternals = useUpdateNodeInternals()
 
@@ -37,7 +40,6 @@ function DecisionHandleUpdater({ nodes }) {
     nodes
       .filter(n => n.type === 'decision')
       .forEach(n => updateNodeInternals(n.id))
-  // signature fully encodes which nodes/options changed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature])
 
@@ -53,6 +55,12 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  // Quick-add button state
+  const [quickAddState, setQuickAddState] = useState(null)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const dismissTimerRef = useRef(null)
 
   const onConnect = useCallback(
     params => setEdges(eds => addEdge({ ...params, animated: true, style: { stroke: '#1e40af', strokeWidth: 2 } }, eds)),
@@ -92,9 +100,57 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
     setEdges(eds => eds.filter(e => !(e.source === nodeId && e.sourceHandle === handleId)))
   }
 
+  // Quick-add: add a new node below an existing one, pre-connected
+  function addNodeBelow(sourceNodeId, newType) {
+    const source = nodes.find(n => n.id === sourceNodeId)
+    if (!source) return
+    if (newType === 'start' && nodes.some(n => n.type === 'start')) return
+    const newId = `${newType}-${++idCounterRef.current}`
+    const newNode = {
+      id: newId,
+      type: newType,
+      position: { x: source.position.x, y: source.position.y + 130 },
+      data: newType === 'decision'
+        ? { label: '', description: '', options: [] }
+        : { label: '', description: '', fields: [] },
+    }
+    const newEdge = {
+      id: `e-${sourceNodeId}-${newId}-${Date.now()}`,
+      source: sourceNodeId,
+      target: newId,
+      animated: true,
+      style: { stroke: '#1e40af', strokeWidth: 2 },
+    }
+    setNodes(nds => [...nds, newNode])
+    setEdges(eds => [...eds, newEdge])
+  }
+
+  function handleNodeMouseEnter(_, node) {
+    if (node.type === 'end') return
+    clearTimeout(dismissTimerRef.current)
+    const el = reactFlowWrapper.current?.querySelector(`[data-id="${node.id}"]`)
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const wrapperRect = reactFlowWrapper.current.getBoundingClientRect()
+    setQuickAddState({
+      nodeId: node.id,
+      left: rect.left - wrapperRect.left + rect.width / 2,
+      top: rect.bottom - wrapperRect.top + 4,
+    })
+  }
+
+  function handleNodeMouseLeave() {
+    if (quickAddOpen) return
+    dismissTimerRef.current = setTimeout(() => setQuickAddState(null), 180)
+  }
+
   return (
     <div className="flex h-full">
-      <NodeSidebar hasStart={nodes.some(n => n.type === 'start')} />
+      <NodeSidebar
+        hasStart={nodes.some(n => n.type === 'start')}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(v => !v)}
+      />
 
       <div className="flex-1 relative" ref={reactFlowWrapper}>
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
@@ -121,7 +177,11 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
           onConnect={onConnect} onInit={setReactFlowInstance}
           onDrop={onDrop} onDragOver={onDragOver}
           onNodeClick={onNodeClick} onPaneClick={onPaneClick}
-          nodeTypes={nodeTypes} fitView
+          onNodeMouseEnter={handleNodeMouseEnter}
+          onNodeMouseLeave={handleNodeMouseLeave}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.4, maxZoom: 0.85 }}
           defaultEdgeOptions={{ animated: true, style: { stroke: '#1e40af', strokeWidth: 2 } }}
         >
           <DecisionHandleUpdater nodes={nodes} />
@@ -129,16 +189,55 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
           <Controls className="!border-slate-200 !shadow-sm" />
           <MiniMap
             nodeColor={n => {
-              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', decision: '#4338ca', notification: '#ea580c', end: '#dc2626' }
+              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', decision: '#4338ca', notification: '#ea580c', upload: '#0d9488', end: '#dc2626' }
               return colors[n.type] || '#94a3b8'
             }}
             className="!border-slate-200 !shadow-sm"
           />
         </ReactFlow>
+
+        {/* Quick-add overlay */}
+        {quickAddState && (
+          <div
+            style={{
+              position: 'absolute',
+              left: quickAddState.left,
+              top: quickAddState.top,
+              transform: 'translateX(-50%)',
+              zIndex: 20,
+            }}
+            onMouseEnter={() => clearTimeout(dismissTimerRef.current)}
+            onMouseLeave={() => { setQuickAddOpen(false); setQuickAddState(null) }}
+          >
+            <button
+              onClick={() => setQuickAddOpen(v => !v)}
+              className="w-7 h-7 rounded-full bg-blue-800 text-white flex items-center justify-center shadow-lg hover:bg-blue-900 transition-colors"
+              title="Agregar nodo conectado"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            {quickAddOpen && (
+              <QuickAddPopup
+                onSelect={type => {
+                  addNodeBelow(quickAddState.nodeId, type)
+                  setQuickAddOpen(false)
+                  setQuickAddState(null)
+                }}
+                hasStart={nodes.some(n => n.type === 'start')}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {selectedNode && (
-        <NodeConfigPanel node={selectedNode} onChange={onNodeDataChange} onClose={() => setSelectedNode(null)} onDeleteOptionEdge={onDeleteOptionEdge} onDeleteNode={onDeleteNode} />
+        <NodeConfigPanel
+          node={selectedNode}
+          onChange={onNodeDataChange}
+          onClose={() => setSelectedNode(null)}
+          onDeleteOptionEdge={onDeleteOptionEdge}
+          onDeleteNode={onDeleteNode}
+        />
       )}
 
       {showTemplates && (
