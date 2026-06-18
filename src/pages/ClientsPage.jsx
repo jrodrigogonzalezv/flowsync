@@ -71,16 +71,19 @@ export default function ClientsPage() {
   const archivedCount = useMemo(() => executions.filter(e => e.archived).length, [executions])
 
   const filteredExecutions = useMemo(() => {
-    return executions.filter(e => {
-      if (!showArchived && e.archived) return false
-      if (showArchived && !e.archived) return false
-      const matchWorkflow = !filterWorkflowId || e.workflowId === filterWorkflowId
-      const q = searchQuery.toLowerCase()
-      const matchSearch = !q ||
-        (e.clientName || '').toLowerCase().includes(q) ||
-        (e.clientEmail || '').toLowerCase().includes(q)
-      return matchWorkflow && matchSearch
-    })
+    const now = Date.now()
+    return executions
+      .filter(e => {
+        if (!showArchived && e.archived) return false
+        if (showArchived && !e.archived) return false
+        const matchWorkflow = !filterWorkflowId || e.workflowId === filterWorkflowId
+        const q = searchQuery.toLowerCase()
+        const matchSearch = !q ||
+          (e.clientName || '').toLowerCase().includes(q) ||
+          (e.clientEmail || '').toLowerCase().includes(q)
+        return matchWorkflow && matchSearch
+      })
+      .sort((a, b) => (b.createdAt?.toMillis?.() ?? now) - (a.createdAt?.toMillis?.() ?? now))
   }, [executions, filterWorkflowId, searchQuery, showArchived])
 
   function exportCSV() {
@@ -197,7 +200,15 @@ export default function ClientsPage() {
       )}
 
       {showInvite && (
-        <InviteClientModal onClose={() => setShowInvite(false)} onCreated={() => { setFilterWorkflowId(''); setSearchQuery(''); setShowArchived(false) }} />
+        <InviteClientModal
+          onClose={() => setShowInvite(false)}
+          onCreated={exec => {
+            setExecutions(prev => [exec, ...prev.filter(e => e.id !== exec.id)])
+            setFilterWorkflowId('')
+            setSearchQuery('')
+            setShowArchived(false)
+          }}
+        />
       )}
 
       {selectedExec && selectedExec.humanSupportRequested && selectedExec.status !== 'completed' ? (

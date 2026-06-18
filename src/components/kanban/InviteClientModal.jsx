@@ -46,7 +46,23 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
       })
       const generatedLink = `${window.location.origin}/flow/${ref.id}`
       setLink(generatedLink)
-      onCreated?.()
+      onCreated?.({
+        id: ref.id,
+        clientName: form.clientName,
+        clientEmail: form.clientEmail,
+        workflowId: form.workflowId,
+        workflowName: workflow?.name || '',
+        userId: user.uid,
+        orgId,
+        status: 'invited',
+        currentNodeIndex: 0,
+        completedNodes: 0,
+        totalNodes: (workflow?.nodes || []).filter(n => n.type !== 'start' && n.type !== 'end').length,
+        responses: {},
+        archived: false,
+        createdAt: null,
+        updatedAt: null,
+      })
 
       const fns = getFunctions()
 
