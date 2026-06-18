@@ -3,6 +3,9 @@ const edge = (id, source, target, sourceHandle) => ({
   id, source, target, ...E, ...(sourceHandle ? { sourceHandle } : {})
 })
 
+// y positions compressed ~33% (factor 0.66) for better initial zoom
+// formula: new_y = 40 + Math.round((old_y - 40) * 0.66)
+
 export const WORKFLOW_TEMPLATES = [
   // ── 1. Onboarding de cliente ──────────────────────────────────────────────
   {
@@ -14,7 +17,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 320, y: 50 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 320, y: 200 },
+        id: 'form-1', type: 'form', position: { x: 320, y: 145 },
         data: {
           label: 'Datos del cliente',
           description: 'Necesitamos algunos datos básicos para comenzar tu proceso.',
@@ -27,14 +30,14 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-1', type: 'notification', position: { x: 320, y: 400 },
+        id: 'notification-1', type: 'notification', position: { x: 320, y: 280 },
         data: {
           label: 'Email de bienvenida',
           subject: 'Bienvenido/a, {{clientName}}',
           message: 'Hola {{clientName}},\n\nGracias por completar tu registro. Hemos recibido toda tu información y un miembro de nuestro equipo se pondrá en contacto contigo a la brevedad.\n\n¡Estamos muy contentos de tenerte con nosotros!',
         },
       },
-      { id: 'end-1', type: 'end', position: { x: 320, y: 570 }, data: { label: 'Fin' } },
+      { id: 'end-1', type: 'end', position: { x: 320, y: 390 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -53,7 +56,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 350, y: 140 },
         data: {
           label: 'Información del prospecto',
           description: 'Cuéntanos sobre tu situación para evaluar cómo podemos ayudarte.',
@@ -66,18 +69,18 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'ai-1', type: 'ai', position: { x: 350, y: 400 },
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 280 },
         data: {
           label: 'Análisis de calificación',
           aiPrompt: 'Eres un especialista en calificación de leads. Analiza las respuestas del prospecto y determina si califica para continuar el proceso comercial. Considera el presupuesto, la urgencia y la necesidad. Sé conciso y directo en tu evaluación.',
         },
       },
       {
-        id: 'condition-1', type: 'condition', position: { x: 350, y: 570 },
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 390 },
         data: { label: '¿Califica como lead?', condition: 'El prospecto tiene presupuesto suficiente, necesidad clara y urgencia razonable.' },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 120, y: 750 },
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 510 },
         data: {
           label: 'Lead calificado',
           subject: '¡Buenas noticias, {{clientName}}!',
@@ -85,15 +88,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 580, y: 750 },
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 510 },
         data: {
           label: 'Lead no calificado',
           subject: 'Gracias por tu interés, {{clientName}}',
           message: 'Hola {{clientName}},\n\nAgradecemos tu interés. Por el momento nuestros servicios no se ajustan a tu situación actual, pero guardaremos tu información y te contactaremos cuando tengamos algo que se adapte mejor a tus necesidades.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 120, y: 920 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 580, y: 920 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 620 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 620 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -116,7 +119,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 350, y: 140 },
         data: {
           label: 'Datos personales',
           description: 'Cuéntanos sobre ti para comenzar el proceso de postulación.',
@@ -130,7 +133,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'form-2', type: 'form', position: { x: 350, y: 420 },
+        id: 'form-2', type: 'form', position: { x: 350, y: 290 },
         data: {
           label: 'Preguntas del cargo',
           description: 'Responde estas preguntas para que podamos conocerte mejor.',
@@ -143,18 +146,18 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'ai-1', type: 'ai', position: { x: 350, y: 650 },
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 440 },
         data: {
           label: 'Análisis del perfil',
           aiPrompt: 'Eres un especialista en reclutamiento. Analiza el perfil del postulante considerando su experiencia, motivación, logros y disponibilidad. Evalúa si cumple con los requisitos del cargo según la base de conocimiento. Proporciona una evaluación objetiva y constructiva.',
         },
       },
       {
-        id: 'condition-1', type: 'condition', position: { x: 350, y: 820 },
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 555 },
         data: { label: '¿Avanza al proceso?', condition: 'El postulante cumple los requisitos mínimos de experiencia y motivación.' },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 120, y: 1000 },
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 675 },
         data: {
           label: 'Avanza a entrevista',
           subject: '¡Avanzaste al siguiente paso, {{clientName}}!',
@@ -162,15 +165,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 580, y: 1000 },
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 675 },
         data: {
           label: 'No avanza',
           subject: 'Gracias por postular, {{clientName}}',
           message: 'Hola {{clientName}},\n\nAgradecemos tu tiempo e interés. En esta oportunidad tu perfil no se ajusta a lo que buscamos, pero guardaremos tu información para futuras oportunidades.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 120, y: 1150 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 580, y: 1150 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 775 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 775 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -194,7 +197,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 350, y: 140 },
         data: {
           label: 'Encuesta de satisfacción',
           description: 'Tu opinión es muy importante para nosotros. Esta encuesta solo toma 2 minutos.',
@@ -207,18 +210,18 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'ai-1', type: 'ai', position: { x: 350, y: 400 },
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 280 },
         data: {
           label: 'Análisis de satisfacción',
           aiPrompt: 'Analiza las respuestas de la encuesta de satisfacción. Evalúa si el cliente está satisfecho o insatisfecho basándote en el puntaje (7+ = satisfecho), si recomendaría el servicio y sus comentarios. Resume los puntos clave de su experiencia.',
         },
       },
       {
-        id: 'condition-1', type: 'condition', position: { x: 350, y: 570 },
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 390 },
         data: { label: '¿Cliente satisfecho?', condition: 'El cliente tiene un puntaje de satisfacción de 7 o más y recomendaría el servicio.' },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 120, y: 750 },
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 510 },
         data: {
           label: 'Gracias y fidelización',
           subject: '¡Gracias por tu valoración, {{clientName}}!',
@@ -226,15 +229,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 580, y: 750 },
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 510 },
         data: {
           label: 'Recuperación de cliente',
           subject: 'Queremos mejorar tu experiencia, {{clientName}}',
           message: 'Hola {{clientName}},\n\nNos preocupa no haber cumplido tus expectativas. Un ejecutivo de cuenta se pondrá en contacto contigo a la brevedad para entender tu situación y buscar una solución.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 120, y: 920 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 580, y: 920 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 620 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 620 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -257,7 +260,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 400, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 400, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 400, y: 140 },
         data: {
           label: 'Información de contacto',
           description: 'Antes de elegir tu plan, necesitamos algunos datos.',
@@ -270,7 +273,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'decision-1', type: 'decision', position: { x: 400, y: 400 },
+        id: 'decision-1', type: 'decision', position: { x: 400, y: 280 },
         data: {
           label: '¿Qué plan te interesa?',
           description: 'Elige el plan que mejor se adapta a tus necesidades.',
@@ -282,7 +285,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 100, y: 610 },
+        id: 'notification-2', type: 'notification', position: { x: 100, y: 415 },
         data: {
           label: 'Info Plan Básico',
           subject: 'Detalles del Plan Básico — {{clientName}}',
@@ -290,7 +293,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 400, y: 610 },
+        id: 'notification-3', type: 'notification', position: { x: 400, y: 415 },
         data: {
           label: 'Info Plan Profesional',
           subject: 'Detalles del Plan Profesional — {{clientName}}',
@@ -298,16 +301,16 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-4', type: 'notification', position: { x: 700, y: 610 },
+        id: 'notification-4', type: 'notification', position: { x: 700, y: 415 },
         data: {
           label: 'Info Plan Enterprise',
           subject: 'Detalles del Plan Enterprise — {{clientName}}',
           message: 'Hola {{clientName}},\n\nGracias por tu interés en el Plan Enterprise. Incluye: usuarios ilimitados, integración API, SLA garantizado, gestor de cuenta dedicado. Precio a medida.\n\nUn ejecutivo senior te contactará en menos de 24 horas.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 100, y: 780 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 400, y: 780 }, data: { label: 'Fin' } },
-      { id: 'end-4', type: 'end', position: { x: 700, y: 780 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 100, y: 530 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 400, y: 530 }, data: { label: 'Fin' } },
+      { id: 'end-4', type: 'end', position: { x: 700, y: 530 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -331,7 +334,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 350, y: 140 },
         data: {
           label: 'Datos personales',
           description: 'Necesitamos verificar tu identidad antes de continuar.',
@@ -345,7 +348,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'form-2', type: 'form', position: { x: 350, y: 410 },
+        id: 'form-2', type: 'form', position: { x: 350, y: 285 },
         data: {
           label: 'Información financiera',
           description: 'Cuéntanos sobre tu situación económica actual.',
@@ -359,18 +362,18 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'ai-1', type: 'ai', position: { x: 350, y: 640 },
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 435 },
         data: {
           label: 'Análisis crediticio',
           aiPrompt: 'Eres un analista de crédito. Evalúa la solicitud basándote en: renta mensual, tipo y antigüedad de contrato, nivel de endeudamiento actual y monto solicitado. Una relación cuota/ingreso menor al 30% es saludable. Emite una recomendación clara de aprobación, aprobación condicional o rechazo, con justificación breve.',
         },
       },
       {
-        id: 'condition-1', type: 'condition', position: { x: 350, y: 810 },
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 550 },
         data: { label: '¿Aprobado?', condition: 'El solicitante cumple los requisitos mínimos de capacidad de pago y estabilidad laboral.' },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 120, y: 990 },
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 665 },
         data: {
           label: 'Crédito pre-aprobado',
           subject: '¡Tu crédito está pre-aprobado, {{clientName}}!',
@@ -378,15 +381,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 580, y: 990 },
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 665 },
         data: {
           label: 'Solicitud no aprobada',
           subject: 'Resultado de tu solicitud de crédito',
           message: 'Hola {{clientName}},\n\nHemos revisado tu solicitud y lamentablemente en este momento no cumple los requisitos para ser aprobada. Te invitamos a volver a postular en 6 meses. Si tienes dudas, comunícate con nosotros.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 120, y: 1160 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 580, y: 1160 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 780 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 780 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -410,7 +413,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 350, y: 140 },
         data: {
           label: 'Datos del paciente',
           description: 'Ingresa tus datos para comenzar la evaluación.',
@@ -424,7 +427,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'form-2', type: 'form', position: { x: 350, y: 420 },
+        id: 'form-2', type: 'form', position: { x: 350, y: 290 },
         data: {
           label: 'Motivo de consulta',
           description: 'Describe lo que estás experimentando con el mayor detalle posible.',
@@ -438,18 +441,18 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'ai-1', type: 'ai', position: { x: 350, y: 660 },
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 450 },
         data: {
           label: 'Análisis clínico',
           aiPrompt: 'Eres un asistente clínico. Analiza los síntomas, antecedentes y medicamentos del paciente. Evalúa el nivel de urgencia (urgente / moderado / leve) y sugiere la especialidad médica más adecuada para la derivación. No diagnostiques enfermedades, solo orienta sobre urgencia y especialidad. Sé claro y empático.',
         },
       },
       {
-        id: 'condition-1', type: 'condition', position: { x: 350, y: 830 },
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 560 },
         data: { label: '¿Requiere atención urgente?', condition: 'Los síntomas presentan signos de urgencia como fiebre alta, dolor intenso o síntomas de aparición súbita.' },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 120, y: 1010 },
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 680 },
         data: {
           label: 'Atención urgente',
           subject: 'Atención requerida — {{clientName}}',
@@ -457,15 +460,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 580, y: 1010 },
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 680 },
         data: {
           label: 'Derivación programada',
           subject: 'Tu hora médica está siendo gestionada, {{clientName}}',
           message: 'Hola {{clientName}},\n\nHemos recibido tu evaluación. Un coordinador te contactará en el próximo día hábil para agendar tu hora con el especialista indicado. Recuerda mantener reposo relativo y tomar abundante líquido.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 120, y: 1180 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 580, y: 1180 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 790 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 790 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -489,7 +492,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 400, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 400, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 400, y: 140 },
         data: {
           label: 'Datos de contacto',
           description: 'Necesitamos tus datos para hacer seguimiento a tu reclamo.',
@@ -502,7 +505,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'form-2', type: 'form', position: { x: 400, y: 400 },
+        id: 'form-2', type: 'form', position: { x: 400, y: 280 },
         data: {
           label: 'Detalle del reclamo',
           description: 'Cuéntanos qué ocurrió con el mayor detalle posible.',
@@ -514,7 +517,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'decision-1', type: 'decision', position: { x: 400, y: 610 },
+        id: 'decision-1', type: 'decision', position: { x: 400, y: 415 },
         data: {
           label: '¿Qué tipo de reclamo es?',
           description: 'Elige la categoría que mejor describe tu situación.',
@@ -526,15 +529,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 100, y: 820 },
+        id: 'notification-2', type: 'notification', position: { x: 100, y: 555 },
         data: {
           label: 'Reclamo — Producto',
           subject: 'Recibimos tu reclamo, {{clientName}}',
-          message: 'Hola {{clientName}},\n\nHemos registrado tu reclamo por producto defectuoso. Nuestro equipo de calidad lo revisará y te contactará en un plazo máximo de 48 horas hábiles con una solución. Número de caso: #PROD-' + Date.now().toString().slice(-6),
+          message: 'Hola {{clientName}},\n\nHemos registrado tu reclamo por producto defectuoso. Nuestro equipo de calidad lo revisará y te contactará en un plazo máximo de 48 horas hábiles con una solución.',
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 400, y: 820 },
+        id: 'notification-3', type: 'notification', position: { x: 400, y: 555 },
         data: {
           label: 'Reclamo — Servicio',
           subject: 'Recibimos tu reclamo, {{clientName}}',
@@ -542,16 +545,16 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-4', type: 'notification', position: { x: 700, y: 820 },
+        id: 'notification-4', type: 'notification', position: { x: 700, y: 555 },
         data: {
           label: 'Reclamo — Cobro',
           subject: 'Recibimos tu reclamo, {{clientName}}',
           message: 'Hola {{clientName}},\n\nHemos registrado tu reclamo por cobro incorrecto. Nuestro equipo de finanzas revisará tu caso con prioridad. Te contactaremos en máximo 24 horas con el detalle de la revisión y, si corresponde, el proceso de devolución.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 100, y: 990 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 400, y: 990 }, data: { label: 'Fin' } },
-      { id: 'end-4', type: 'end', position: { x: 700, y: 990 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 100, y: 665 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 400, y: 665 }, data: { label: 'Fin' } },
+      { id: 'end-4', type: 'end', position: { x: 700, y: 665 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -576,7 +579,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 350, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 350, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 350, y: 140 },
         data: {
           label: 'Datos personales',
           description: 'Cuéntanos sobre ti para iniciar tu solicitud de arriendo.',
@@ -591,7 +594,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'form-2', type: 'form', position: { x: 350, y: 430 },
+        id: 'form-2', type: 'form', position: { x: 350, y: 300 },
         data: {
           label: 'Antecedentes financieros',
           description: 'Esta información es confidencial y solo se usa para evaluar tu solicitud.',
@@ -605,18 +608,18 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'ai-1', type: 'ai', position: { x: 350, y: 680 },
+        id: 'ai-1', type: 'ai', position: { x: 350, y: 460 },
         data: {
           label: 'Evaluación del arrendatario',
           aiPrompt: 'Eres un analista inmobiliario. Evalúa el perfil del arrendatario considerando: renta (debe ser al menos 3x el valor del arriendo si está disponible), estabilidad laboral, disponibilidad de garantía y aval, y antecedentes de pago. Emite una recomendación de aceptación, aceptación con condiciones o rechazo, con justificación breve y objetiva.',
         },
       },
       {
-        id: 'condition-1', type: 'condition', position: { x: 350, y: 850 },
+        id: 'condition-1', type: 'condition', position: { x: 350, y: 575 },
         data: { label: '¿Perfil viable?', condition: 'El arrendatario tiene ingresos suficientes, estabilidad laboral y capacidad de pago de garantía.' },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 120, y: 1030 },
+        id: 'notification-2', type: 'notification', position: { x: 120, y: 695 },
         data: {
           label: 'Perfil aprobado',
           subject: '¡Tu solicitud avanzó, {{clientName}}!',
@@ -624,15 +627,15 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 580, y: 1030 },
+        id: 'notification-3', type: 'notification', position: { x: 580, y: 695 },
         data: {
           label: 'Perfil no aprobado',
           subject: 'Resultado de tu solicitud de arriendo',
           message: 'Hola {{clientName}},\n\nLamentablemente, tu perfil no cumple los requisitos mínimos para este arriendo en este momento. Te invitamos a postular con un codeudor o a consultar por propiedades con menor valor de arriendo. Quedamos a tu disposición.',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 120, y: 1200 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 580, y: 1200 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 120, y: 805 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 580, y: 805 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
@@ -656,7 +659,7 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start-1', type: 'start', position: { x: 400, y: 40 }, data: { label: 'Inicio' } },
       {
-        id: 'form-1', type: 'form', position: { x: 400, y: 190 },
+        id: 'form-1', type: 'form', position: { x: 400, y: 140 },
         data: {
           label: 'Datos del inscrito',
           description: 'Completa tu inscripción en pocos pasos.',
@@ -670,7 +673,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'decision-1', type: 'decision', position: { x: 400, y: 400 },
+        id: 'decision-1', type: 'decision', position: { x: 400, y: 280 },
         data: {
           label: '¿Qué modalidad prefieres?',
           description: 'Elige cómo quieres participar.',
@@ -682,7 +685,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-2', type: 'notification', position: { x: 100, y: 610 },
+        id: 'notification-2', type: 'notification', position: { x: 100, y: 415 },
         data: {
           label: 'Confirmación presencial',
           subject: '¡Inscripción confirmada! — {{clientName}}',
@@ -690,7 +693,7 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-3', type: 'notification', position: { x: 400, y: 610 },
+        id: 'notification-3', type: 'notification', position: { x: 400, y: 415 },
         data: {
           label: 'Confirmación online',
           subject: '¡Inscripción confirmada! — {{clientName}}',
@@ -698,16 +701,16 @@ export const WORKFLOW_TEMPLATES = [
         },
       },
       {
-        id: 'notification-4', type: 'notification', position: { x: 700, y: 610 },
+        id: 'notification-4', type: 'notification', position: { x: 700, y: 415 },
         data: {
           label: 'Confirmación grabación',
           subject: '¡Inscripción confirmada! — {{clientName}}',
           message: 'Hola {{clientName}},\n\nTu inscripción está confirmada. Recibirás acceso a la grabación del evento dentro de las 48 horas posteriores a su realización.\n\n📅 Evento: [Fecha]\n\nEl link de acceso llegará a este email automáticamente. ¡Gracias por inscribirte!',
         },
       },
-      { id: 'end-2', type: 'end', position: { x: 100, y: 780 }, data: { label: 'Fin' } },
-      { id: 'end-3', type: 'end', position: { x: 400, y: 780 }, data: { label: 'Fin' } },
-      { id: 'end-4', type: 'end', position: { x: 700, y: 780 }, data: { label: 'Fin' } },
+      { id: 'end-2', type: 'end', position: { x: 100, y: 530 }, data: { label: 'Fin' } },
+      { id: 'end-3', type: 'end', position: { x: 400, y: 530 }, data: { label: 'Fin' } },
+      { id: 'end-4', type: 'end', position: { x: 700, y: 530 }, data: { label: 'Fin' } },
     ],
     edges: [
       edge('e1', 'start-1', 'form-1'),
