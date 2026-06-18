@@ -165,10 +165,10 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
             <div>
               <div className="flex flex-col items-center text-center mb-6">
                 <div className="w-12 h-12 bg-emerald-50 border border-emerald-200 rounded-full flex items-center justify-center mb-3">
-                  <Check className="w-6 h-6 text-emerald-600" />
+                  {loading ? <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" /> : <Check className="w-6 h-6 text-emerald-600" />}
                 </div>
                 <p className="text-slate-900 font-semibold mb-1">Invitación creada</p>
-                <p className="text-slate-500 text-sm">Link generado para {form.clientName}</p>
+                <p className="text-slate-500 text-sm">{loading ? 'Enviando notificaciones...' : `Link generado para ${form.clientName}`}</p>
               </div>
 
               {emailStatus === 'sent' && (
@@ -209,7 +209,7 @@ export default function InviteClientModal({ onClose, onCreated, preselectedWorkf
                   {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
-              <button onClick={onClose} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              <button onClick={onClose} disabled={loading} className="w-full bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 py-2.5 rounded-xl text-sm font-medium transition-colors">
                 Cerrar
               </button>
             </div>
