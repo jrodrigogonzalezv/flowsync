@@ -73,6 +73,16 @@ function ResponseSection({ nodeId, responseData, workflow }) {
   )
 }
 
+function ProfileField({ label, value, span = false }) {
+  if (!value) return null
+  return (
+    <div className={span ? 'col-span-2' : ''}>
+      <p className="text-xs text-slate-400 font-medium mb-0.5">{label}</p>
+      <p className="text-sm text-slate-900">{value}</p>
+    </div>
+  )
+}
+
 export default function ExecutionDetailPage() {
   const { orgId, execId } = useParams()
   const navigate = useNavigate()
@@ -188,31 +198,69 @@ export default function ExecutionDetailPage() {
           <h2 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <User className="w-4 h-4 text-slate-400" /> Perfil del cliente
           </h2>
-          <div className="flex items-start gap-4">
-            {profile.photoURL ? (
-              <img src={profile.photoURL} alt="" className="w-14 h-14 rounded-full object-cover ring-2 ring-slate-200 flex-shrink-0" />
+
+          {/* Avatar + type badge */}
+          <div className="flex items-center gap-4 mb-5">
+            {(profile.photoUrl || profile.photoURL) ? (
+              <img src={profile.photoUrl || profile.photoURL} alt="" className="w-14 h-14 rounded-full object-cover ring-2 ring-slate-200 flex-shrink-0" />
             ) : (
               <div className="w-14 h-14 rounded-full bg-blue-800 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-                {(profile.displayName || profile.email || '?')[0].toUpperCase()}
+                {([profile.firstName, profile.name, profile.displayName, profile.email].find(Boolean) || '?')[0].toUpperCase()}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 flex-1">
-              {[
-                ['Nombre',   profile.displayName],
-                ['Email',    profile.email],
-                ['Tipo',     profile.type === 'natural' ? 'Persona natural' : profile.type === 'juridica' ? 'Empresa' : profile.type],
-                ['RUT',      profile.rut],
-                ['Teléfono', profile.phone],
-                ['Dirección',profile.address],
-                ['Empresa',  profile.companyName],
-                ['RUT empresa', profile.companyRut],
-              ].filter(([, v]) => v).map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-xs text-slate-400 font-medium">{label}</p>
-                  <p className="text-sm text-slate-900">{value}</p>
-                </div>
-              ))}
+            <div>
+              <p className="text-base font-semibold text-slate-900">
+                {[profile.firstName, profile.paternalLastName, profile.maternalLastName].filter(Boolean).join(' ')
+                  || profile.name || profile.displayName || profile.email}
+              </p>
+              <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mt-1 ${
+                profile.type === 'juridica' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {profile.type === 'juridica' ? 'Empresa' : 'Persona natural'}
+              </span>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+            {/* Common fields */}
+            <ProfileField label="Email" value={profile.email} />
+            <ProfileField label="Teléfono" value={profile.phone} />
+            <ProfileField label="RUT" value={profile.rut} />
+
+            {/* Persona natural extras */}
+            {profile.type === 'natural' && <>
+              <ProfileField label="Fecha de nacimiento" value={profile.birthDate} />
+              <ProfileField label="Género" value={profile.gender} />
+              <ProfileField label="Nacionalidad" value={profile.nationality} />
+            </>}
+
+            {/* Empresa fields */}
+            {profile.type === 'juridica' && <>
+              <ProfileField label="Razón social" value={profile.companyName} span />
+              <ProfileField label="RUT empresa" value={profile.companyRut} />
+              <ProfileField label="Rubro" value={profile.industry} />
+              <ProfileField label="Representante" value={[profile.firstName, profile.paternalLastName].filter(Boolean).join(' ') || null} />
+              <ProfileField label="Cargo" value={profile.position} />
+            </>}
+
+            {/* Structured address */}
+            {(profile.addressStreet || profile.address) && (
+              <ProfileField
+                label="Domicilio"
+                span
+                value={
+                  profile.addressStreet
+                    ? [
+                        [profile.addressStreet, profile.addressNumber].filter(Boolean).join(' '),
+                        profile.addressApt ? `Dpto. ${profile.addressApt}` : '',
+                        profile.addressCity,
+                        profile.addressRegion,
+                        profile.addressCountry,
+                      ].filter(Boolean).join(', ')
+                    : profile.address
+                }
+              />
+            )}
           </div>
         </div>
       )}
