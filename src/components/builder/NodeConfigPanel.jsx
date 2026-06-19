@@ -160,6 +160,24 @@ export default function NodeConfigPanel({ node, onChange, onClose, onDeleteOptio
           </>
         )}
 
+        {node.type === 'signature' && (
+          <>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1.5">Título del documento</label>
+              <input value={data.documentTitle || ''} onChange={e => update('documentTitle', e.target.value)}
+                className={inputClass} placeholder="Ej: Contrato de servicios, Autorización..." />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1.5">Instrucciones para el cliente</label>
+              <textarea value={data.instructions || ''} onChange={e => update('instructions', e.target.value)} rows={3}
+                className={`${inputClass} resize-none`} placeholder="Ej: Al firmar aceptas los términos y condiciones del servicio." />
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-purple-700">La firma se almacena con timestamp, IP y email del firmante. Válida según <strong>Ley 19.799</strong>.</p>
+            </div>
+          </>
+        )}
+
         {node.type === 'decision' && (
           <div>
             <div className="flex items-center justify-between mb-2">

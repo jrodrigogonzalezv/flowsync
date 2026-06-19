@@ -76,6 +76,17 @@ export const NODE_TYPES_CONFIG = {
     maxInputs: 1,
     maxOutputs: 1,
   },
+  signature: {
+    label: 'Firma',
+    color: 'bg-purple-700',
+    border: 'border-purple-300',
+    textColor: 'text-purple-700',
+    bgLight: 'bg-purple-50',
+    icon: '✍️',
+    description: 'Firma electrónica simple (Ley 19.799)',
+    maxInputs: 1,
+    maxOutputs: 1,
+  },
   end: {
     label: 'Fin',
     color: 'bg-rose-600',

@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
-import { Loader2, ChevronRight, Star, Upload, X, FileText, CheckCircle } from 'lucide-react'
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { useState, useRef, useEffect } from 'react'
+import { Loader2, ChevronRight, Star, Upload, X, FileText, CheckCircle, PenLine, RotateCcw } from 'lucide-react'
+import { ref, uploadBytesResumable, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../../lib/firebase'
 import { NODE_TYPES_CONFIG } from '../builder/nodes/nodeTypes'
 
@@ -76,7 +76,19 @@ export default function FlowStep({ step, stepNumber, totalSteps, submitting, onS
         />
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: step.type === 'upload' ? 'none' : undefined }}>
+      {step.type === 'signature' && (
+        <SignatureStep
+          step={step}
+          stepNumber={stepNumber}
+          totalSteps={totalSteps}
+          executionId={executionId}
+          orgId={orgId}
+          signerEmail={clientData?.clientEmail}
+          onSubmit={onSubmit}
+        />
+      )}
+
+      <form onSubmit={handleSubmit} style={{ display: (step.type === 'upload' || step.type === 'signature') ? 'none' : undefined }}>
         {step.type === 'form' && (
           <div className="space-y-5 mb-8">
             {(step.data.fields || []).map(field => (
@@ -276,6 +288,207 @@ function UploadStep({ step, stepNumber, totalSteps, executionId, orgId, onSubmit
         {uploading
           ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
           : <><Upload className="w-4 h-4" /> Enviar documentos</>
+        }
+      </button>
+    </form>
+  )
+}
+
+function SignatureStep({ step, stepNumber, totalSteps, executionId, orgId, signerEmail, onSubmit }) {
+  const [mode, setMode] = useState('draw')
+  const [typedName, setTypedName] = useState('')
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [hasSignature, setHasSignature] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const canvasRef = useRef(null)
+  const lastPos = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    setHasSignature(false)
+  }, [mode])
+
+  function getPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const src = e.touches ? e.touches[0] : e
+    return { x: (src.clientX - rect.left) * scaleX, y: (src.clientY - rect.top) * scaleY }
+  }
+
+  function startDraw(e) {
+    e.preventDefault()
+    lastPos.current = getPos(e, canvasRef.current)
+    setIsDrawing(true)
+  }
+
+  function draw(e) {
+    e.preventDefault()
+    if (!isDrawing || !lastPos.current) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const pos = getPos(e, canvas)
+    ctx.beginPath()
+    ctx.moveTo(lastPos.current.x, lastPos.current.y)
+    ctx.lineTo(pos.x, pos.y)
+    ctx.strokeStyle = '#1e293b'
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+    lastPos.current = pos
+    setHasSignature(true)
+  }
+
+  function stopDraw() { setIsDrawing(false); lastPos.current = null }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    setHasSignature(false)
+  }
+
+  async function handleSign(e) {
+    e.preventDefault()
+    setUploading(true)
+    setUploadError('')
+
+    try {
+      let ipAddress = 'unknown'
+      try {
+        const ipRes = await Promise.race([
+          fetch('https://api.ipify.org?format=json').then(r => r.json()),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+        ])
+        ipAddress = ipRes.ip || 'unknown'
+      } catch {}
+
+      let imageBlob
+      if (mode === 'draw') {
+        imageBlob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'))
+      } else {
+        const canvas = document.createElement('canvas')
+        canvas.width = 600
+        canvas.height = 180
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.font = 'italic 52px Georgia, serif'
+        ctx.fillStyle = '#1e293b'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(typedName, canvas.width / 2, canvas.height / 2)
+        imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+      }
+
+      const storagePath = `signatures/${orgId}/${executionId}/${step.id}.png`
+      const storageRef = ref(storage, storagePath)
+      await uploadBytes(storageRef, imageBlob)
+      const imageUrl = await getDownloadURL(storageRef)
+
+      onSubmit({
+        type: 'signature',
+        imageUrl,
+        signedAt: new Date().toISOString(),
+        signerEmail: signerEmail || '',
+        ipAddress,
+        userAgent: navigator.userAgent,
+        method: mode,
+        ...(mode === 'type' && { typedName }),
+        storagePath,
+      })
+    } catch {
+      setUploadError('Error al guardar la firma. Intenta de nuevo.')
+      setUploading(false)
+    }
+  }
+
+  const canSign = mode === 'draw' ? hasSignature : typedName.trim().length > 0
+
+  return (
+    <form onSubmit={handleSign}>
+      <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 mb-5">
+        <p className="text-xs text-purple-700 leading-relaxed">
+          <strong>Firma Electrónica Simple</strong> — Válida en Chile según la <strong>Ley 19.799</strong>.
+          Al firmar se registra: fecha, hora, dirección IP y tu email ({signerEmail || 'no disponible'}).
+        </p>
+      </div>
+
+      {step.data.instructions && (
+        <p className="text-slate-500 text-sm mb-5 leading-relaxed">{step.data.instructions}</p>
+      )}
+
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-5">
+        {[{ key: 'draw', label: 'Dibujar' }, { key: 'type', label: 'Escribir nombre' }].map(tab => (
+          <button key={tab.key} type="button" onClick={() => setMode(tab.key)}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+              mode === tab.key
+                ? 'bg-white text-purple-800 shadow-sm border border-slate-200'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'draw' ? (
+        <div className="mb-5">
+          <div className="relative border-2 border-slate-200 rounded-xl overflow-hidden bg-white" style={{ touchAction: 'none' }}>
+            <canvas
+              ref={canvasRef}
+              width={600}
+              height={180}
+              className="w-full block"
+              style={{ cursor: 'crosshair', touchAction: 'none' }}
+              onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+              onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
+            />
+            {!hasSignature && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                <p className="text-slate-300 text-sm">Dibuja tu firma aquí</p>
+              </div>
+            )}
+          </div>
+          {hasSignature && (
+            <div className="flex justify-end mt-2">
+              <button type="button" onClick={clearCanvas}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" /> Limpiar
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mb-5">
+          <input type="text" value={typedName} onChange={e => setTypedName(e.target.value)}
+            placeholder="Tu nombre completo"
+            className="w-full border border-slate-300 text-slate-900 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 placeholder-slate-400"
+            style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
+          />
+          {typedName && (
+            <div className="mt-3 border-2 border-slate-200 rounded-xl p-5 bg-white flex items-center justify-center min-h-[80px]">
+              <span className="text-3xl text-slate-800" style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+                {typedName}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {uploadError && <p className="text-red-500 text-sm mb-4">⚠ {uploadError}</p>}
+
+      <button type="submit" disabled={!canSign || uploading}
+        className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow-sm">
+        {uploading
+          ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando firma...</>
+          : <><PenLine className="w-4 h-4" /> {stepNumber === totalSteps ? 'Firmar y finalizar' : 'Firmar y continuar'}</>
         }
       </button>
     </form>

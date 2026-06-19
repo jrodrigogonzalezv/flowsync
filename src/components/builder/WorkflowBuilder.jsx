@@ -14,7 +14,7 @@ import TemplateModal from './TemplateModal'
 
 const nodeTypes = {
   start: FlowNode, form: FlowNode, ai: FlowNode, condition: FlowNode,
-  decision: FlowNode, notification: FlowNode, upload: FlowNode, end: FlowNode,
+  decision: FlowNode, notification: FlowNode, upload: FlowNode, signature: FlowNode, end: FlowNode,
 }
 
 const initialNodes = [
@@ -189,7 +189,7 @@ export default function WorkflowBuilder({ workflow, onSave, saving }) {
           <Controls className="!border-slate-200 !shadow-sm" />
           <MiniMap
             nodeColor={n => {
-              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', decision: '#4338ca', notification: '#ea580c', upload: '#0d9488', end: '#dc2626' }
+              const colors = { start: '#10b981', form: '#1e40af', ai: '#7c3aed', condition: '#d97706', decision: '#4338ca', notification: '#ea580c', upload: '#0d9488', signature: '#7e22ce', end: '#dc2626' }
               return colors[n.type] || '#94a3b8'
             }}
             className="!border-slate-200 !shadow-sm"
