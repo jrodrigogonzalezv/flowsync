@@ -4,6 +4,25 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../../lib/firebase'
 import { Loader2, Camera, User, Building2 } from 'lucide-react'
 
+const REGIONES_CHILE = [
+  'Región de Arica y Parinacota',
+  'Región de Tarapacá',
+  'Región de Antofagasta',
+  'Región de Atacama',
+  'Región de Coquimbo',
+  'Región de Valparaíso',
+  'Región Metropolitana de Santiago',
+  "Región del Libertador General Bernardo O'Higgins",
+  'Región del Maule',
+  'Región de Ñuble',
+  'Región del Biobío',
+  'Región de La Araucanía',
+  'Región de Los Ríos',
+  'Región de Los Lagos',
+  'Región de Aysén del General Carlos Ibáñez del Campo',
+  'Región de Magallanes y de la Antártica Chilena',
+]
+
 export default function ClientProfileForm({ execution, onComplete }) {
   const [type, setType] = useState('natural')
   const [saving, setSaving] = useState(false)
@@ -12,12 +31,24 @@ export default function ClientProfileForm({ execution, onComplete }) {
   const fileRef = useRef(null)
 
   const [form, setForm] = useState({
-    name: execution.clientName || '',
+    firstName: '',
+    paternalLastName: '',
+    maternalLastName: '',
     phone: '',
     rut: '',
-    address: '',
+    street: '',
+    streetNumber: '',
+    apt: '',
+    city: '',
+    region: '',
+    country: 'Chile',
+    birthDate: '',
+    gender: '',
+    nationality: 'Chilena',
     companyName: '',
     companyRut: '',
+    companyRepFirstName: '',
+    companyRepLastName: '',
     industry: '',
     position: '',
   })
@@ -45,13 +76,49 @@ export default function ClientProfileForm({ execution, onComplete }) {
         photoUrl = await getDownloadURL(storageRef)
       }
 
+      const firstName = form.firstName.trim()
+      const paternalLastName = form.paternalLastName.trim()
+      const maternalLastName = form.maternalLastName.trim()
+      const derivedName = [firstName, paternalLastName, maternalLastName].filter(Boolean).join(' ')
+        || execution.clientName
+
+      const derivedAddress = [
+        form.street.trim(),
+        form.streetNumber.trim(),
+        form.apt.trim() ? `Dpto. ${form.apt.trim()}` : '',
+        form.city.trim(),
+        form.region.trim(),
+        form.country.trim(),
+      ].filter(Boolean).join(', ')
+
+      const repFirstName = form.companyRepFirstName.trim()
+      const repLastName = form.companyRepLastName.trim()
+      const repName = [repFirstName, repLastName].filter(Boolean).join(' ')
+
       const profileData = {
         orgId: execution.orgId,
         email: execution.clientEmail,
-        name: form.name.trim() || execution.clientName,
+        // backward-compatible flat fields
+        name: type === 'juridica' && repName ? repName : derivedName,
+        address: derivedAddress,
+        // structured name fields
+        firstName: type === 'juridica' ? repFirstName : firstName,
+        paternalLastName: type === 'juridica' ? repLastName : paternalLastName,
+        maternalLastName: type === 'juridica' ? '' : maternalLastName,
+        // contact
         phone: form.phone.trim(),
         rut: form.rut.trim(),
-        address: form.address.trim(),
+        // structured address
+        addressStreet: form.street.trim(),
+        addressNumber: form.streetNumber.trim(),
+        addressApt: form.apt.trim(),
+        addressCity: form.city.trim(),
+        addressRegion: form.region.trim(),
+        addressCountry: form.country.trim(),
+        // personal extras (persona natural only)
+        birthDate: type === 'natural' ? (form.birthDate || null) : null,
+        gender: type === 'natural' ? (form.gender || null) : null,
+        nationality: type === 'natural' ? (form.nationality.trim() || null) : null,
         type,
         ...(type === 'juridica' && {
           companyName: form.companyName.trim(),
@@ -82,7 +149,9 @@ export default function ClientProfileForm({ execution, onComplete }) {
     }
   }
 
-  const inputClass = "w-full border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400 bg-white"
+  const inputCls = "w-full border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800/20 focus:border-blue-800 placeholder-slate-400 bg-white"
+  const labelCls = "text-xs font-medium text-slate-600 block mb-1.5"
+  const sectionCls = "text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 mt-1"
 
   return (
     <form onSubmit={handleSave} className="space-y-5">
@@ -129,50 +198,134 @@ export default function ClientProfileForm({ execution, onComplete }) {
         <p className="text-xs text-slate-400 mt-1.5">Opcional</p>
       </div>
 
+      {/* Persona natural */}
       {type === 'natural' ? (
         <>
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Nombre completo</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)} className={inputClass} placeholder="Tu nombre completo" required />
+            <label className={labelCls}>Nombre <span className="text-red-400">*</span></label>
+            <input value={form.firstName} onChange={e => set('firstName', e.target.value)} className={inputCls} placeholder="Tu nombre" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Apellido paterno <span className="text-red-400">*</span></label>
+              <input value={form.paternalLastName} onChange={e => set('paternalLastName', e.target.value)} className={inputCls} placeholder="Ap. paterno" required />
+            </div>
+            <div>
+              <label className={labelCls}>Apellido materno</label>
+              <input value={form.maternalLastName} onChange={e => set('maternalLastName', e.target.value)} className={inputCls} placeholder="Ap. materno" />
+            </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">RUT</label>
-            <input value={form.rut} onChange={e => set('rut', e.target.value)} className={inputClass} placeholder="12.345.678-9" />
+            <label className={labelCls}>RUT</label>
+            <input value={form.rut} onChange={e => set('rut', e.target.value)} className={inputCls} placeholder="12.345.678-9" />
           </div>
         </>
       ) : (
+        /* Empresa */
         <>
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Nombre de la empresa</label>
-            <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputClass} placeholder="Razón social" required />
+            <label className={labelCls}>Razón social <span className="text-red-400">*</span></label>
+            <input value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} placeholder="Nombre de la empresa" required />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">RUT empresa</label>
-            <input value={form.companyRut} onChange={e => set('companyRut', e.target.value)} className={inputClass} placeholder="76.543.210-K" />
+            <label className={labelCls}>RUT empresa</label>
+            <input value={form.companyRut} onChange={e => set('companyRut', e.target.value)} className={inputCls} placeholder="76.543.210-K" />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Rubro</label>
-            <input value={form.industry} onChange={e => set('industry', e.target.value)} className={inputClass} placeholder="Ej: Tecnología, Retail, Servicios..." />
+            <label className={labelCls}>Rubro</label>
+            <input value={form.industry} onChange={e => set('industry', e.target.value)} className={inputCls} placeholder="Ej: Tecnología, Retail, Servicios..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Nombre representante</label>
+              <input value={form.companyRepFirstName} onChange={e => set('companyRepFirstName', e.target.value)} className={inputCls} placeholder="Nombre" />
+            </div>
+            <div>
+              <label className={labelCls}>Apellido</label>
+              <input value={form.companyRepLastName} onChange={e => set('companyRepLastName', e.target.value)} className={inputCls} placeholder="Apellido" />
+            </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Nombre del representante</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)} className={inputClass} placeholder="Nombre y apellido" required />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Cargo</label>
-            <input value={form.position} onChange={e => set('position', e.target.value)} className={inputClass} placeholder="Ej: Gerente, Fundador, Director..." />
+            <label className={labelCls}>Cargo</label>
+            <input value={form.position} onChange={e => set('position', e.target.value)} className={inputCls} placeholder="Ej: Gerente, Fundador, Director..." />
           </div>
         </>
       )}
 
+      {/* Teléfono */}
       <div>
-        <label className="text-xs font-medium text-slate-600 block mb-1.5">Teléfono</label>
-        <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} className={inputClass} placeholder="+56 9 1234 5678" />
+        <label className={labelCls}>Teléfono</label>
+        <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} placeholder="+56 9 1234 5678" />
       </div>
+
+      {/* Domicilio */}
       <div>
-        <label className="text-xs font-medium text-slate-600 block mb-1.5">Ciudad / Región</label>
-        <input value={form.address} onChange={e => set('address', e.target.value)} className={inputClass} placeholder="Ej: Santiago, Región Metropolitana" />
+        <p className={sectionCls}>Domicilio</p>
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className={labelCls}>Calle</label>
+              <input value={form.street} onChange={e => set('street', e.target.value)} className={inputCls} placeholder="Av. Providencia" />
+            </div>
+            <div className="w-28">
+              <label className={labelCls}>Número</label>
+              <input value={form.streetNumber} onChange={e => set('streetNumber', e.target.value)} className={inputCls} placeholder="1234" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Depto / Oficina</label>
+              <input value={form.apt} onChange={e => set('apt', e.target.value)} className={inputCls} placeholder="101" />
+            </div>
+            <div>
+              <label className={labelCls}>Ciudad</label>
+              <input value={form.city} onChange={e => set('city', e.target.value)} className={inputCls} placeholder="Santiago" />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Región</label>
+            <select value={form.region} onChange={e => set('region', e.target.value)} className={inputCls}>
+              <option value="">Selecciona una región</option>
+              {REGIONES_CHILE.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>País</label>
+            <input value={form.country} onChange={e => set('country', e.target.value)} className={inputCls} placeholder="Chile" />
+          </div>
+        </div>
       </div>
+
+      {/* Datos adicionales (solo persona natural) */}
+      {type === 'natural' && (
+        <div>
+          <p className={sectionCls}>Datos adicionales</p>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Fecha de nacimiento</label>
+                <input type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Género</label>
+                <select value={form.gender} onChange={e => set('gender', e.target.value)} className={inputCls}>
+                  <option value="">Prefiero no indicar</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="No binario">No binario</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Nacionalidad</label>
+              <input value={form.nationality} onChange={e => set('nationality', e.target.value)} className={inputCls} placeholder="Chilena" />
+            </div>
+          </div>
+        </div>
+      )}
 
       <button
         type="submit"
