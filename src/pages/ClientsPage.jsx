@@ -540,24 +540,7 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
 
                   // Firma
                   if (node?.type === 'signature' || data?.type === 'signature') {
-                    if (!data?.imageUrl) return null
-                    return (
-                      <div key={nodeId} className="border border-purple-100 rounded-xl overflow-hidden">
-                        <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex items-center gap-2">
-                          <span className="text-sm">✍️</span>
-                          <p className="text-xs font-semibold text-purple-700">{nodeName || 'Firma'}</p>
-                        </div>
-                        <div className="p-4 bg-white">
-                          <img src={data.imageUrl} alt="Firma" className="max-w-full border border-slate-200 rounded-lg mb-3" style={{ maxHeight: 120 }} />
-                          <div className="space-y-1">
-                            {data.signerEmail && <p className="text-xs text-slate-500">Firmante: <span className="text-slate-800 font-medium">{data.signerEmail}</span></p>}
-                            {data.signedAt && <p className="text-xs text-slate-500">Firmado: <span className="text-slate-800 font-medium">{new Date(data.signedAt).toLocaleString('es-CL')}</span></p>}
-                            {data.ipAddress && <p className="text-xs text-slate-500">IP: <span className="font-mono text-slate-600">{data.ipAddress}</span></p>}
-                          </div>
-                          <p className="text-[10px] text-purple-600 font-medium mt-2">Firma Electrónica Simple · Ley 19.799</p>
-                        </div>
-                      </div>
-                    )
+                    return <SignatureCard key={nodeId} data={data} nodeName={nodeName || 'Firma'} />
                   }
 
                   // Carga de documentos
@@ -743,6 +726,56 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
             </>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function SignatureCard({ data, nodeName }) {
+  const [imgError, setImgError] = useState(false)
+
+  return (
+    <div className="border border-purple-100 rounded-xl overflow-hidden">
+      <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex items-center gap-2">
+        <span className="text-sm">✍️</span>
+        <p className="text-xs font-semibold text-purple-700">{nodeName}</p>
+        {data?.imageUrl && (
+          <a href={data.imageUrl} target="_blank" rel="noopener noreferrer"
+            className="ml-auto flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 font-medium">
+            <ExternalLink className="w-3 h-3" /> Ver completa
+          </a>
+        )}
+      </div>
+      <div className="p-4 bg-white">
+        {data?.imageUrl && !imgError ? (
+          <img
+            src={data.imageUrl}
+            alt="Firma electrónica"
+            className="w-full border border-slate-200 rounded-lg mb-3 bg-white object-contain"
+            style={{ maxHeight: 150 }}
+            onError={() => setImgError(true)}
+          />
+        ) : data?.imageUrl ? (
+          <a href={data.imageUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2.5 mb-3 hover:bg-purple-100 transition-colors text-purple-700 text-sm font-medium"
+          >
+            <ExternalLink className="w-4 h-4 flex-shrink-0" /> Abrir imagen de firma
+          </a>
+        ) : (
+          <p className="text-sm text-slate-400 mb-3">Firma aún no registrada.</p>
+        )}
+        <div className="space-y-1">
+          {data?.signerEmail && (
+            <p className="text-xs text-slate-500">Firmante: <span className="text-slate-800 font-medium">{data.signerEmail}</span></p>
+          )}
+          {data?.signedAt && (
+            <p className="text-xs text-slate-500">Firmado: <span className="text-slate-800 font-medium">{new Date(data.signedAt).toLocaleString('es-CL')}</span></p>
+          )}
+          {data?.ipAddress && (
+            <p className="text-xs text-slate-500">IP: <span className="font-mono text-slate-600">{data.ipAddress}</span></p>
+          )}
+        </div>
+        <p className="text-[10px] text-purple-600 font-medium mt-2">Firma Electrónica Simple · Ley 19.799</p>
       </div>
     </div>
   )
