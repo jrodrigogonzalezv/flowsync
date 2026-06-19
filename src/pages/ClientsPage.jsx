@@ -775,7 +775,15 @@ function SignatureCard({ data, nodeName }) {
             <p className="text-xs text-slate-500">IP: <span className="font-mono text-slate-600">{data.ipAddress}</span></p>
           )}
         </div>
-        <p className="text-[10px] text-purple-600 font-medium mt-2">Firma Electrónica Simple · Ley 19.799</p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[10px] text-purple-600 font-medium">Firma Electrónica Simple · Ley 19.799</p>
+          {data?.certificateUrl && (
+            <a href={data.certificateUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-800 font-medium">
+              <FileText className="w-3 h-3" /> Certificado PDF
+            </a>
+          )}
+        </div>
       </div>
     </div>
   )

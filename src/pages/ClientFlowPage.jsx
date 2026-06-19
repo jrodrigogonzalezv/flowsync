@@ -5,12 +5,13 @@ import {
   collection, addDoc, query, where, getDocs, orderBy, serverTimestamp,
 } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
-import { db } from '../lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
+import { db, auth, sendSignInLinkToEmail } from '../lib/firebase'
 import FlowStep from '../components/flow/FlowStep'
 import ClientProfileForm from '../components/flow/ClientProfileForm'
 import {
   Loader2, CheckCircle, AlertCircle, Sparkles, ChevronRight,
-  Zap, Send, MessageCircle, FileText, Clock,
+  Zap, Send, MessageCircle, FileText, Clock, X,
 } from 'lucide-react'
 
 export default function ClientFlowPage() {
@@ -24,6 +25,9 @@ export default function ClientFlowPage() {
   const [aiResult, setAiResult] = useState('')
   const [profileChecked, setProfileChecked] = useState(false)
   const [hasProfile, setHasProfile] = useState(false)
+  const [clientAuth, setClientAuth] = useState(undefined)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [magicLinkStatus, setMagicLinkStatus] = useState('idle')
 
   // Subscribe to execution in real-time (needed for human escalation).
   // Load workflow once after first execution snapshot.
@@ -67,6 +71,11 @@ export default function ClientFlowPage() {
     }
     check()
   }, [execution?.id, profileChecked])
+
+  // Track whether client is authenticated (for the "create account" banner).
+  useEffect(() => {
+    return onAuthStateChanged(auth, user => setClientAuth(user ?? null))
+  }, [])
 
   // Capture UTM / click params on first open and store in execution.
   useEffect(() => {
@@ -292,6 +301,24 @@ export default function ClientFlowPage() {
     })
   }
 
+  async function handleCreateAccount() {
+    if (!execution?.clientEmail) return
+    setMagicLinkStatus('sending')
+    try {
+      localStorage.setItem('flowsync_client_signin', 'true')
+      localStorage.setItem('flowsync_client_email', execution.clientEmail)
+      await sendSignInLinkToEmail(auth, execution.clientEmail, {
+        url: `${window.location.origin}/portal`,
+        handleCodeInApp: true,
+      })
+      setMagicLinkStatus('sent')
+    } catch {
+      localStorage.removeItem('flowsync_client_signin')
+      localStorage.removeItem('flowsync_client_email')
+      setMagicLinkStatus('idle')
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return (
@@ -383,6 +410,37 @@ export default function ClientFlowPage() {
           <div className="h-full bg-blue-800 transition-all duration-700" style={{ width: `${progress}%` }} />
         </div>
       </div>
+
+      {/* Banner "crear cuenta" — solo para clientes no autenticados */}
+      {clientAuth !== undefined && !bannerDismissed && !isCompleted && execution?.clientEmail &&
+        clientAuth?.email !== execution.clientEmail && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+          <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
+            {magicLinkStatus === 'sent' ? (
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span>Te enviamos un link a <strong>{execution.clientEmail}</strong>. ¡Revisa tu email!</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-blue-800">Crea tu cuenta para ver todos tus procesos en un solo lugar.</p>
+                <button
+                  onClick={handleCreateAccount}
+                  disabled={magicLinkStatus === 'sending'}
+                  className="flex-shrink-0 text-xs font-semibold bg-blue-800 text-white px-3 py-1.5 rounded-lg hover:bg-blue-900 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                >
+                  {magicLinkStatus === 'sending'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : 'Crear cuenta'}
+                </button>
+              </>
+            )}
+            <button onClick={() => setBannerDismissed(true)} className="text-blue-400 hover:text-blue-600 flex-shrink-0 ml-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
         <div className="w-full max-w-xl mx-auto">
