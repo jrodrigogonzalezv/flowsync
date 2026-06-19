@@ -37,6 +37,7 @@ function ResponseSection({ nodeId, responseData, workflow }) {
 
   const isDecision = node?.type === 'decision'
   const isForm = node?.type === 'form'
+  const isSignature = node?.type === 'signature' || responseData?.type === 'signature'
 
   return (
     <div className="border border-slate-100 rounded-xl overflow-hidden">
@@ -46,15 +47,34 @@ function ResponseSection({ nodeId, responseData, workflow }) {
         <span className="text-sm font-medium text-slate-900 ml-1">{label}</span>
       </div>
       <div className="px-4 py-3 bg-white space-y-2">
-        {isDecision && (
+        {isSignature && responseData?.imageUrl ? (
+          <>
+            <img
+              src={responseData.imageUrl}
+              alt="Firma electrónica"
+              className="max-w-xs border border-slate-200 rounded-lg"
+            />
+            <div className="space-y-1 mt-2">
+              {responseData.signerEmail && (
+                <p className="text-xs text-slate-500">Firmante: <span className="text-slate-800 font-medium">{responseData.signerEmail}</span></p>
+              )}
+              {responseData.signedAt && (
+                <p className="text-xs text-slate-500">Fecha: <span className="text-slate-800 font-medium">{new Date(responseData.signedAt).toLocaleString('es-CL')}</span></p>
+              )}
+              {responseData.ipAddress && (
+                <p className="text-xs text-slate-500">IP: <span className="text-slate-700 font-mono">{responseData.ipAddress}</span></p>
+              )}
+            </div>
+            <p className="text-[10px] text-purple-600 font-medium mt-1">✍ Firma Electrónica Simple · Ley 19.799</p>
+          </>
+        ) : isDecision ? (
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Opción elegida:</span>
             <span className="text-sm font-medium text-slate-900">
               {responseData?.chosenOptionLabel || responseData?.chosenOptionId || '—'}
             </span>
           </div>
-        )}
-        {isForm && typeof responseData === 'object' && !isDecision && (
+        ) : isForm && typeof responseData === 'object' ? (
           Object.entries(responseData).map(([fieldId, value]) => {
             const field = fields.find(f => f.id === fieldId)
             return (
@@ -64,8 +84,7 @@ function ResponseSection({ nodeId, responseData, workflow }) {
               </div>
             )
           })
-        )}
-        {!isDecision && !isForm && (
+        ) : (
           <p className="text-sm text-slate-700 whitespace-pre-wrap">{formatValue(responseData)}</p>
         )}
       </div>
