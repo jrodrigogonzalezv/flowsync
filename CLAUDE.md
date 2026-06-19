@@ -206,14 +206,12 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-18 — actualizado sesión 4)
+## Estado actual (2026-06-18 — actualizado sesión 5)
 
-### 🌿 Rama activa: `feature/world-class-ux`
-Rama separada de `main`. Contiene mejoras de UX/datos sin tocar funcionalidad existente.
-Para continuar en otro equipo: `git fetch && git checkout feature/world-class-ux`
-Para volver a main si no convence: `git checkout main`
+### 🌿 Rama activa: `main`
+`feature/world-class-ux` mergeada a `main` ✅ (sesión 5).
 
-### ✅ Completado (sesión 4 — rama feature/world-class-ux)
+### ✅ Completado (sesión 4 + 5 — ya en main)
 - Login (Google OAuth + email/password)
 - Builder visual de flujos (drag-and-drop, 6 tipos de nodos)
   - Nodo Inicio: no se puede duplicar (guard en onDrop + sidebar disabled)
@@ -321,9 +319,7 @@ Para volver a main si no convence: `git checkout main`
     - `sendWhatsappInvite` usa `process.env` (secret latest version) + logs para debug
 
 ### 🔜 Pendiente / Ideas futuras
-- **Merge `feature/world-class-ux` a main** cuando se apruebe después de pruebas en producción
 - Habilitar "Email link (passwordless sign-in)" en Firebase Console para que magic link funcione
-- Mostrar campos nuevos del perfil (firstName, region, etc.) en superadmin ExecutionDetailPage
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
 - WhatsApp integration (Twilio) — deferido
 - Filtros en el Kanban (por flujo, por fecha)
