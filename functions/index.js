@@ -358,10 +358,69 @@ async function sendWebhookWithRetry(url, payload, secret, maxRetries = 3) {
   return { ok: false }
 }
 
-exports.onExecutionComplete = onDocumentUpdated('executions/{executionId}', async event => {
+exports.onExecutionComplete = onDocumentUpdated(
+  { document: 'executions/{executionId}', secrets: [resendApiKey, twilioAccountSid, twilioAuthToken] },
+  async event => {
   const before = event.data.before.data()
   const after  = event.data.after.data()
   const db = admin.firestore()
+  const executionId = event.params.executionId
+
+  // ── Notificar al dueño de la org cuando un cliente completa un paso ──────
+  const oldKeys = Object.keys(before.responses || {})
+  const newKeys = Object.keys(after.responses || {})
+  const stepCompleted = newKeys.length > oldKeys.length
+
+  if (stepCompleted && after.orgId) {
+    const orgSnap = await db.doc(`organizations/${after.orgId}`).get()
+    const org = orgSnap.data() || {}
+
+    if (org.notifyStepEmail || org.notifyStepWhatsapp) {
+      const ownerId = org.ownerId || after.orgId
+      const ownerSnap = await db.doc(`users/${ownerId}`).get()
+      const ownerEmail = ownerSnap.data()?.email
+
+      const clientName   = after.clientName   || 'Un cliente'
+      const workflowName = after.workflowName || 'el flujo'
+      const stepNum      = newKeys.length
+      const totalSteps   = after.totalNodes   || '?'
+      const execUrl      = `https://flowsync-e9709.web.app/superadmin/org/${after.orgId}/execution/${executionId}`
+
+      if (org.notifyStepEmail && ownerEmail) {
+        await sendEmail({
+          to: ownerEmail,
+          subject: `${clientName} completó el paso ${stepNum}/${totalSteps} en "${workflowName}"`,
+          html: buildEmailHtml({
+            title: `Nuevo paso completado`,
+            name: ownerSnap.data()?.displayName || 'Hola',
+            body: `<strong>${clientName}</strong> ha completado el paso <strong>${stepNum} de ${totalSteps}</strong> en el flujo <strong>"${workflowName}"</strong>.`,
+            cta: 'Ver detalle →',
+            link: execUrl,
+          }),
+        }).catch(e => console.error('Step email error:', e.message))
+      }
+
+      if (org.notifyStepWhatsapp && org.notifyPhone) {
+        try {
+          const twilio = require('twilio')
+          const twilioClient = twilio(twilioAccountSid.value(), twilioAuthToken.value())
+          await twilioClient.messages.create({
+            from: 'whatsapp:+14155238886',
+            to: `whatsapp:${org.notifyPhone}`,
+            body: [
+              `✅ *FlowSync* — Nuevo paso completado`,
+              ``,
+              `*${clientName}* completó el paso *${stepNum}/${totalSteps}* en el flujo *"${workflowName}"*.`,
+              ``,
+              `Ver detalle: ${execUrl}`,
+            ].join('\n'),
+          })
+        } catch (e) {
+          console.error('Step WhatsApp error:', e.message)
+        }
+      }
+    }
+  }
 
   // Notification: flow completed
   if (before.status !== 'completed' && after.status === 'completed') {

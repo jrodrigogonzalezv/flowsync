@@ -3,7 +3,7 @@ import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firest
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
-import { Upload, Loader2, Check, Building2, Globe, Trash2 } from 'lucide-react'
+import { Upload, Loader2, Check, Building2, Globe, Trash2, Bell, Mail, MessageCircle, Phone } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -17,6 +17,12 @@ export default function SettingsPage() {
   const [error, setError] = useState('')
   const fileRef = useRef()
 
+  const [notifyStepEmail, setNotifyStepEmail] = useState(false)
+  const [notifyStepWhatsapp, setNotifyStepWhatsapp] = useState(false)
+  const [notifyPhone, setNotifyPhone] = useState('')
+  const [notifySaving, setNotifySaving] = useState(false)
+  const [notifySaved, setNotifySaved] = useState(false)
+
   useEffect(() => {
     if (!orgId) return
     getDoc(doc(db, 'organizations', orgId)).then(snap => {
@@ -25,6 +31,9 @@ export default function SettingsPage() {
         setOrg(d)
         setName(d.name || '')
         setWebsite(d.website || '')
+        setNotifyStepEmail(d.notifyStepEmail ?? false)
+        setNotifyStepWhatsapp(d.notifyStepWhatsapp ?? false)
+        setNotifyPhone(d.notifyPhone || '')
       }
     })
   }, [orgId])
@@ -68,6 +77,22 @@ export default function SettingsPage() {
   async function handleRemoveLogo() {
     await setDoc(doc(db, 'organizations', orgId), { logoUrl: null }, { merge: true })
     setOrg(prev => ({ ...prev, logoUrl: null }))
+  }
+
+  async function handleSaveNotifications() {
+    setNotifySaving(true)
+    try {
+      await setDoc(doc(db, 'organizations', orgId), {
+        notifyStepEmail,
+        notifyStepWhatsapp,
+        notifyPhone: notifyPhone.trim(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+      setNotifySaved(true)
+      setTimeout(() => setNotifySaved(false), 2500)
+    } finally {
+      setNotifySaving(false)
+    }
   }
 
   const planLabel = user?.profile?.plan === 'pro' ? 'Pro' : 'Gratuito'
@@ -164,6 +189,89 @@ export default function SettingsPage() {
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : 'Guardar cambios'}
               </button>
               {saved && (
+                <div className="flex items-center gap-1.5 text-emerald-600 text-sm font-medium">
+                  <Check className="w-4 h-4" /> Guardado
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Notificaciones */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-slate-400" /> Notificaciones de proceso
+          </h3>
+          <p className="text-xs text-slate-400 mb-5">Recibe un aviso cada vez que un cliente completa un paso en cualquier flujo.</p>
+
+          <div className="space-y-4">
+            {/* Email toggle */}
+            <label className="flex items-center justify-between cursor-pointer gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-4 h-4 text-blue-700" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-800">Email</p>
+                  <p className="text-xs text-slate-400">A tu correo registrado ({user?.email})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotifyStepEmail(v => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${notifyStepEmail ? 'bg-blue-800' : 'bg-slate-200'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${notifyStepEmail ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </label>
+
+            {/* WhatsApp toggle */}
+            <label className="flex items-center justify-between cursor-pointer gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-800">WhatsApp</p>
+                  <p className="text-xs text-slate-400">Mensaje al número que configures</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotifyStepWhatsapp(v => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${notifyStepWhatsapp ? 'bg-emerald-600' : 'bg-slate-200'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${notifyStepWhatsapp ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </label>
+
+            {/* Phone field — only when WhatsApp is on */}
+            {notifyStepWhatsapp && (
+              <div className="ml-11">
+                <label className="text-xs font-medium text-slate-600 block mb-1.5">Número WhatsApp</label>
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="tel"
+                    value={notifyPhone}
+                    onChange={e => setNotifyPhone(e.target.value)}
+                    placeholder="+56912345678"
+                    className="w-full pl-10 border border-slate-300 text-slate-900 rounded-xl py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 placeholder-slate-400"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Incluye el código de país, ej: +5691234567</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                onClick={handleSaveNotifications}
+                disabled={notifySaving}
+                className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-40 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+              >
+                {notifySaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : 'Guardar'}
+              </button>
+              {notifySaved && (
                 <div className="flex items-center gap-1.5 text-emerald-600 text-sm font-medium">
                   <Check className="w-4 h-4" /> Guardado
                 </div>
