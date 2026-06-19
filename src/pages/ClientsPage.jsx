@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import KanbanBoard from '../components/kanban/KanbanBoard'
 import InviteClientModal from '../components/kanban/InviteClientModal'
 import OperatorChatPanel from '../components/chat/OperatorChatPanel'
-import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle, FileText, ExternalLink, CheckCircle, RefreshCw, Sparkles, ChevronUp } from 'lucide-react'
+import { UserPlus, Loader2, Download, Search, X, ChevronDown, Building2, User, Phone, MapPin, Archive, ArchiveRestore, Trash2, AlertTriangle, FileText, ExternalLink, CheckCircle, RefreshCw, Sparkles, ChevronUp, PenLine } from 'lucide-react'
 import { deleteDoc, updateDoc } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 
@@ -343,6 +343,32 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
     }
   }
 
+  const signatureNodeId = Object.keys(execution.responses || {}).find(
+    k => execution.responses[k]?.type === 'signature'
+  )
+
+  async function handleResetSignature() {
+    if (!signatureNodeId) return
+    setActing(true)
+    const newResponses = { ...(execution.responses || {}) }
+    delete newResponses[signatureNodeId]
+    const sigHistoryIdx = (execution.navigationHistory || []).findIndex(h => h.nodeId === signatureNodeId)
+    const newHistory = sigHistoryIdx >= 0
+      ? (execution.navigationHistory || []).slice(0, sigHistoryIdx)
+      : (execution.navigationHistory || [])
+    const newCompleted = sigHistoryIdx >= 0 ? sigHistoryIdx : Math.max(0, (execution.completedNodes || 0) - 1)
+    await updateDoc(doc(db, 'executions', execution.id), {
+      responses: newResponses,
+      currentNodeId: signatureNodeId,
+      completedNodes: newCompleted,
+      status: 'in_progress',
+      navigationHistory: newHistory,
+      updatedAt: serverTimestamp(),
+    })
+    setActing(false)
+    onClose()
+  }
+
   const responseEntries = Object.entries(execution.responses || {}).filter(([, data]) => {
     if (!data || typeof data !== 'object') return false
     const keys = Object.keys(data)
@@ -511,6 +537,28 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
                   const node = findNode(nodeId)
                   const nodeName = node?.data?.label || 'Paso'
                   const fields = node?.data?.fields || []
+                  const isSignatureNode = node?.type === 'signature' || data?.type === 'signature'
+
+                  if (isSignatureNode && data?.imageUrl) {
+                    return (
+                      <div key={nodeId} className="border border-purple-100 rounded-xl overflow-hidden">
+                        <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex items-center gap-2">
+                          <span className="text-sm">✍️</span>
+                          <p className="text-xs font-semibold text-purple-700">{nodeName || 'Firma'}</p>
+                        </div>
+                        <div className="p-4 bg-white">
+                          <img src={data.imageUrl} alt="Firma" className="max-w-full border border-slate-200 rounded-lg mb-3" />
+                          <div className="space-y-1">
+                            {data.signerEmail && <p className="text-xs text-slate-500">Firmante: <span className="text-slate-800 font-medium">{data.signerEmail}</span></p>}
+                            {data.signedAt && <p className="text-xs text-slate-500">Fecha: <span className="text-slate-800 font-medium">{new Date(data.signedAt).toLocaleString('es-CL')}</span></p>}
+                            {data.ipAddress && <p className="text-xs text-slate-500">IP: <span className="font-mono text-slate-700">{data.ipAddress}</span></p>}
+                          </div>
+                          <p className="text-[10px] text-purple-600 font-medium mt-2">✍ Firma Electrónica Simple · Ley 19.799</p>
+                        </div>
+                      </div>
+                    )
+                  }
+
                   const entries = Object.entries(data).filter(([k]) => k !== 'aiResult')
                   if (entries.length === 0) return null
                   return (
@@ -570,6 +618,16 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
                 </button>
               </div>
             </div>
+          )}
+
+          {!confirmAction && signatureNodeId && !execution.archived && (
+            <button
+              onClick={handleResetSignature}
+              disabled={acting}
+              className="w-full flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 hover:border-purple-300 text-purple-700 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 mb-2"
+            >
+              <PenLine className="w-4 h-4" /> Solicitar nueva firma
+            </button>
           )}
 
           {!confirmAction && execution.status === 'review' && !execution.archived && (
