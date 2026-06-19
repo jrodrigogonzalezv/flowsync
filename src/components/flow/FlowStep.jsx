@@ -3,6 +3,7 @@ import { Loader2, ChevronRight, Star, Upload, X, FileText, CheckCircle, PenLine,
 import { ref, uploadBytesResumable, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../../lib/firebase'
 import { NODE_TYPES_CONFIG } from '../builder/nodes/nodeTypes'
+import { generateSignatureCertificate } from '../../lib/generateCertificate'
 
 function resolveVars(text, vars) {
   if (!text || !vars) return text
@@ -388,15 +389,38 @@ function SignatureStep({ step, stepNumber, totalSteps, executionId, orgId, signe
         imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
       }
 
+      const signedAt = new Date().toISOString()
       const storagePath = `signatures/${orgId}/${executionId}/${step.id}.png`
       const storageRef = ref(storage, storagePath)
       await uploadBytes(storageRef, imageBlob)
       const imageUrl = await getDownloadURL(storageRef)
 
+      // Generate certificate PDF with QR code
+      let certificateUrl = null
+      try {
+        const certBlob = await generateSignatureCertificate({
+          signatureImageBlob: imageBlob,
+          signerEmail: signerEmail || '',
+          signedAt,
+          ipAddress,
+          method: mode,
+          executionId,
+          nodeId: step.id,
+          documentTitle: step.data.label,
+        })
+        const certPath = `signatures/${orgId}/${executionId}/${step.id}_certificate.pdf`
+        const certRef = ref(storage, certPath)
+        await uploadBytes(certRef, certBlob)
+        certificateUrl = await getDownloadURL(certRef)
+      } catch (certErr) {
+        console.warn('Certificate generation failed, continuing without it:', certErr)
+      }
+
       onSubmit({
         type: 'signature',
         imageUrl,
-        signedAt: new Date().toISOString(),
+        certificateUrl,
+        signedAt,
         signerEmail: signerEmail || '',
         ipAddress,
         userAgent: navigator.userAgent,

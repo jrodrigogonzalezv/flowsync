@@ -20,6 +20,8 @@ import WorkflowDetailPage from './pages/superadmin/WorkflowDetailPage'
 import SADashboard from './pages/superadmin/SADashboard'
 import SASearch from './pages/superadmin/SASearch'
 import SASettings from './pages/superadmin/SASettings'
+import ClientPortalPage from './pages/ClientPortalPage'
+import VerifySignaturePage from './pages/VerifySignaturePage'
 
 const Spinner = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -48,6 +50,7 @@ function PrivateRoute({ children }) {
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
   if (user.isSuperAdmin) return <Navigate to="/superadmin/dashboard" replace />
+  if (user.profile?.role === 'client') return <Navigate to="/portal" replace />
   if (user.orgBlocked) return <BlockedScreen />
   return children
 }
@@ -82,6 +85,8 @@ function AppRoutes() {
       {/* Públicas */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/flow/:id" element={<ClientFlowPage />} />
+      <Route path="/portal" element={<ClientPortalPage />} />
+      <Route path="/verify/:executionId/:nodeId" element={<VerifySignaturePage />} />
       <Route path="/join" element={<JoinPage />} />
 
       {/* Super admin — layout completamente separado */}

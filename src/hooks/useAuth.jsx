@@ -102,6 +102,18 @@ export function AuthProvider({ children }) {
     const snap = await getDoc(ref)
 
     if (!snap.exists()) {
+      const isClientSignIn = localStorage.getItem('flowsync_client_signin') === 'true'
+        || window.location.pathname === '/portal'
+      if (isClientSignIn) {
+        localStorage.removeItem('flowsync_client_signin')
+        await setDoc(ref, {
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || '',
+          role: 'client',
+          createdAt: serverTimestamp(),
+        })
+        return
+      }
       const orgId = firebaseUser.uid
       await setDoc(doc(db, 'organizations', orgId), {
         name: extra.displayName || firebaseUser.displayName || firebaseUser.email || 'Mi organización',
@@ -119,6 +131,7 @@ export function AuthProvider({ children }) {
       })
     } else {
       const data = snap.data()
+      if (data.role === 'client') return
       if (!data.orgId) {
         const orgId = firebaseUser.uid
         await setDoc(doc(db, 'organizations', orgId), {

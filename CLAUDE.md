@@ -55,7 +55,8 @@ Light profesional: fondos `bg-slate-50`/white, acento `blue-800`, texto slate.
 
 ```
 src/
-  lib/firebase.js                    — inicialización Firebase, exports: auth, db, storage
+  lib/firebase.js                    — inicialización Firebase, exports: auth, db, storage, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink
+  lib/generateCertificate.js         — genera PDF A4 con firma + QR (pdf-lib + qrcode)
   hooks/useAuth.jsx                  — auth context: user, loading, loginWithGoogle, loginWithEmail,
                                        registerWithEmail, logout, claimInvite
   App.jsx                            — rutas: /login, /flow/:id, /join (públicas); resto privadas
@@ -68,7 +69,9 @@ src/
     WorkflowsPage.jsx                — lista de flujos (filtra por orgId), botón delete
     WorkflowBuilderPage.jsx          — editor con header + KnowledgeBaseModal + TemplateModal
     ClientsPage.jsx                  — Kanban clientes: archivo/eliminar, selector flujos activos
-    ClientFlowPage.jsx               — vista pública del cliente + RecoverLinkScreen + ArchivedScreen
+    ClientFlowPage.jsx               — vista pública del cliente + RecoverLinkScreen + ArchivedScreen + banner "Crear cuenta"
+    ClientPortalPage.jsx             — portal autenticado del cliente (/portal), lista procesos
+    VerifySignaturePage.jsx          — página pública /verify/:executionId/:nodeId
     TeamPage.jsx                     — gestión de miembros e invitaciones (solo admin)
     JoinPage.jsx                     — aceptación de invitación de equipo (/join?invite=ID)
   components/
@@ -129,6 +132,9 @@ functions/
 ### Storage paths
 - KB docs: `kb/{workflowId}/{fileId}/{filename}`
 - Fotos de perfil clientes: `profiles/clients/{orgId}/{sanitizedEmail}`
+- Documentos subidos por clientes: `client-docs/{orgId}/{executionId}/{nodeId}/{fileId}.ext`
+- Firmas PNG: `signatures/{orgId}/{executionId}/{nodeId}.png`
+- Certificados PDF firmados: `signatures/{orgId}/{executionId}/{nodeId}_certificate.pdf`
 
 ### Status de executions
 `invited` → `in_progress` → `completed`
@@ -206,7 +212,7 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-19 — actualizado sesión 6)
+## Estado actual (2026-06-19 — actualizado sesión 7)
 
 ### 🌿 Rama activa: `main`
 `feature/world-class-ux` mergeada a `main` ✅ (sesión 5).
@@ -329,16 +335,39 @@ npm run dev
   - Admin puede ver firma en `ExecutionDetailPage` superadmin (imagen + firmante + fecha + IP)
   - Badge "Firma Electrónica Simple · Ley 19.799"
   - Storage path: `signatures/{orgId}/{executionId}/{nodeId}.png`
+  - Admin puede "Solicitar nueva firma" desde modal Kanban (resetea currentNodeId al nodo firma, borra respuesta)
+  - `SignatureCard` como componente React separado en `ClientsPage.jsx` (evita hook-en-map)
+
+- **Portal del Cliente** (`/portal`) (sesión 7, ya en main):
+  - Clientes pueden crear cuenta vía magic link (passwordless email) desde banner en `/flow/:id`
+  - `/portal` muestra todos sus procesos con estado, progreso y link para continuar
+  - `ClientPortalPage.jsx`: completa sign-in por email link automáticamente al landing
+  - `useAuth.jsx`: `ensureUserDoc` distingue cliente vs admin (localStorage `flowsync_client_signin` + pathname)
+  - Clientes crean doc `users/{uid}` con `role: 'client'` (sin org, sin orgId)
+  - `PrivateRoute` redirige `role: 'client'` → `/portal`
+  - **PENDIENTE ACTIVAR**: Firebase Console → Authentication → Sign-in method → "Email link (passwordless sign-in)"
+
+- **Certificado PDF con QR de verificación** (sesión 7, ya en main):
+  - Al firmar, FlowStep genera un PDF A4 con `pdf-lib` + `qrcode` (browser-side, sin Cloud Function)
+  - El certificado incluye: header morado, badge VÁLIDO, imagen de firma, tabla de auditoría, QR code
+  - QR apunta a `{origin}/verify/{executionId}/{nodeId}`
+  - PDF subido a Firebase Storage: `signatures/{orgId}/{executionId}/{nodeId}_certificate.pdf`
+  - `certificateUrl` guardado en `execution.responses[nodeId]`
+  - `/verify/:executionId/:nodeId` — página pública que muestra audit trail + imagen firma + descarga PDF
+  - `SignatureCard` en ClientsPage muestra link "Certificado PDF"
+  - Si la generación del PDF falla, el flujo continúa sin cortar (try/catch con `console.warn`)
+  - Deps nuevas: `pdf-lib`, `qrcode`
+  - `src/lib/generateCertificate.js` — función exportada `generateSignatureCertificate(params)`
 
 ### 🔜 Pendiente / Ideas futuras
-- Habilitar "Email link (passwordless sign-in)" en Firebase Console para que magic link funcione
+- **ACTIVAR** "Email link (passwordless sign-in)" en Firebase Console → Auth → Sign-in method (requerido para portal)
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
-- WhatsApp integration (Twilio) — deferido
 - Filtros en el Kanban (por flujo, por fecha)
 - Exportar respuestas a CSV
 - Personalización de emails (logo del cliente)
 - Webhooks cuando un cliente termina
-- Vista admin de firmas en KanbanCard (actualmente solo visible en superadmin/ExecutionDetailPage)
+- Estampar el PDF firmado sobre un documento subido (actualmente se genera un certificado standalone)
+- Firmado de PDFs de plantilla definidos por el admin en la config del nodo firma
 
 ---
 
