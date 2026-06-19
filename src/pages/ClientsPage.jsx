@@ -478,12 +478,12 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
             ))}
           </div>
 
-          {/* Uploaded docs */}
-          {execution.uploadedDocs?.length > 0 && (
+          {/* Uploaded docs — only show orphan docs (no nodeId) for backward compat */}
+          {(execution.uploadedDocs || []).filter(d => !d.nodeId).length > 0 && (
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Documentos subidos</p>
               <div className="space-y-2">
-                {execution.uploadedDocs.map(d => (
+                {(execution.uploadedDocs || []).filter(d => !d.nodeId).map(d => (
                   <a key={d.id} href={d.downloadURL} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors group"
                   >
@@ -528,18 +528,19 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
             </div>
           )}
 
-          {/* Responses */}
+          {/* Completed steps */}
           {responseEntries.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Respuestas</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Completado hasta ahora</p>
               <div className="space-y-3">
                 {responseEntries.map(([nodeId, data]) => {
                   const node = findNode(nodeId)
                   const nodeName = node?.data?.label || 'Paso'
                   const fields = node?.data?.fields || []
-                  const isSignatureNode = node?.type === 'signature' || data?.type === 'signature'
 
-                  if (isSignatureNode && data?.imageUrl) {
+                  // Firma
+                  if (node?.type === 'signature' || data?.type === 'signature') {
+                    if (!data?.imageUrl) return null
                     return (
                       <div key={nodeId} className="border border-purple-100 rounded-xl overflow-hidden">
                         <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex items-center gap-2">
@@ -547,23 +548,71 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
                           <p className="text-xs font-semibold text-purple-700">{nodeName || 'Firma'}</p>
                         </div>
                         <div className="p-4 bg-white">
-                          <img src={data.imageUrl} alt="Firma" className="max-w-full border border-slate-200 rounded-lg mb-3" />
+                          <img src={data.imageUrl} alt="Firma" className="max-w-full border border-slate-200 rounded-lg mb-3" style={{ maxHeight: 120 }} />
                           <div className="space-y-1">
                             {data.signerEmail && <p className="text-xs text-slate-500">Firmante: <span className="text-slate-800 font-medium">{data.signerEmail}</span></p>}
-                            {data.signedAt && <p className="text-xs text-slate-500">Fecha: <span className="text-slate-800 font-medium">{new Date(data.signedAt).toLocaleString('es-CL')}</span></p>}
-                            {data.ipAddress && <p className="text-xs text-slate-500">IP: <span className="font-mono text-slate-700">{data.ipAddress}</span></p>}
+                            {data.signedAt && <p className="text-xs text-slate-500">Firmado: <span className="text-slate-800 font-medium">{new Date(data.signedAt).toLocaleString('es-CL')}</span></p>}
+                            {data.ipAddress && <p className="text-xs text-slate-500">IP: <span className="font-mono text-slate-600">{data.ipAddress}</span></p>}
                           </div>
-                          <p className="text-[10px] text-purple-600 font-medium mt-2">✍ Firma Electrónica Simple · Ley 19.799</p>
+                          <p className="text-[10px] text-purple-600 font-medium mt-2">Firma Electrónica Simple · Ley 19.799</p>
                         </div>
                       </div>
                     )
                   }
 
-                  const entries = Object.entries(data).filter(([k]) => k !== 'aiResult')
+                  // Carga de documentos
+                  if (node?.type === 'upload') {
+                    const nodeDocs = (execution.uploadedDocs || []).filter(d => d.nodeId === nodeId)
+                    const count = nodeDocs.length || data.fileCount || 0
+                    return (
+                      <div key={nodeId} className="border border-teal-100 rounded-xl overflow-hidden">
+                        <div className="bg-teal-50 px-4 py-2 border-b border-teal-100 flex items-center gap-2">
+                          <span className="text-sm">📎</span>
+                          <p className="text-xs font-semibold text-teal-700">{nodeName}</p>
+                          <span className="ml-auto text-xs text-teal-500">{count} archivo{count !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="p-3 bg-white space-y-2">
+                          {nodeDocs.length > 0 ? nodeDocs.map(d => (
+                            <a key={d.id} href={d.downloadURL} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2 hover:bg-teal-100 transition-colors group"
+                            >
+                              <FileText className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-900 truncate">{d.name}</p>
+                                {d.size && <p className="text-xs text-slate-400">{Math.round(d.size / 1024)} KB</p>}
+                              </div>
+                              <ExternalLink className="w-3.5 h-3.5 text-teal-400 group-hover:text-teal-600 flex-shrink-0" />
+                            </a>
+                          )) : (
+                            <p className="text-sm text-slate-400 py-1 px-1">{count} archivo{count !== 1 ? 's' : ''} subido{count !== 1 ? 's' : ''}</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Decisión
+                  if (node?.type === 'decision') {
+                    return (
+                      <div key={nodeId} className="border border-indigo-100 rounded-xl overflow-hidden">
+                        <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center gap-2">
+                          <span className="text-sm">🔀</span>
+                          <p className="text-xs font-semibold text-indigo-700">{nodeName}</p>
+                        </div>
+                        <div className="px-4 py-3 bg-white">
+                          <p className="text-sm text-slate-900 font-medium">{data.chosenOptionLabel || data.chosenOptionId || '—'}</p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Formulario (default)
+                  const entries = Object.entries(data).filter(([k]) => k !== 'aiResult' && k !== 'fileCount')
                   if (entries.length === 0) return null
                   return (
                     <div key={nodeId} className="border border-slate-100 rounded-xl overflow-hidden">
-                      <div className="bg-slate-50 px-4 py-2 border-b border-slate-100">
+                      <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex items-center gap-2">
+                        <span className="text-sm">📋</span>
                         <p className="text-xs font-semibold text-slate-600">{nodeName}</p>
                       </div>
                       <div className="divide-y divide-slate-50">
@@ -572,7 +621,7 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
                           return (
                             <div key={k} className="flex justify-between items-start gap-4 px-4 py-2.5">
                               <span className="text-slate-500 text-sm flex-shrink-0">{field?.label || k}</span>
-                              <span className="text-slate-900 text-sm font-medium text-right break-words">{String(v)}</span>
+                              <span className="text-slate-900 text-sm font-medium text-right break-words max-w-[60%]">{String(v)}</span>
                             </div>
                           )
                         })}
@@ -585,7 +634,7 @@ function ExecutionDetailModal({ execution, clientProfile, onClose }) {
           )}
 
           {responseEntries.length === 0 && (
-            <p className="text-slate-400 text-sm text-center py-4">Sin respuestas aún.</p>
+            <p className="text-slate-400 text-sm text-center py-4">El cliente aún no ha completado ningún paso.</p>
           )}
         </div>
 
