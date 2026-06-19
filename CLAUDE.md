@@ -206,7 +206,7 @@ npm run dev
 
 ---
 
-## Estado actual (2026-06-18 — actualizado sesión 5)
+## Estado actual (2026-06-19 — actualizado sesión 6)
 
 ### 🌿 Rama activa: `main`
 `feature/world-class-ux` mergeada a `main` ✅ (sesión 5).
@@ -318,6 +318,18 @@ npm run dev
     - Filtros del Kanban se limpian al abrir InviteClientModal
     - `sendWhatsappInvite` usa `process.env` (secret latest version) + logs para debug
 
+- **Firma Electrónica Simple (FES)** (sesión 6, ya en main):
+  - Nuevo nodo `signature` en `nodeTypes.js` (color purple-700, ✍️)
+  - `NodeConfigPanel`: configura título del documento e instrucciones
+  - `FlowStep.jsx` → `SignatureStep`: canvas HTML5 para dibujar + modo "escribir nombre" (Georgia italic)
+  - Recoge audit trail: timestamp ISO, email del firmante, IP pública (ipify.org con timeout 3s), userAgent, método
+  - Sube PNG a Firebase Storage: `signatures/{orgId}/{executionId}/{nodeId}.png`
+  - Respuesta en `execution.responses[nodeId]`: `{ type, imageUrl, signedAt, signerEmail, ipAddress, userAgent, method, storagePath }`
+  - Avance de flujo normal (no cambia status a review)
+  - Admin puede ver firma en `ExecutionDetailPage` superadmin (imagen + firmante + fecha + IP)
+  - Badge "Firma Electrónica Simple · Ley 19.799"
+  - Storage path: `signatures/{orgId}/{executionId}/{nodeId}.png`
+
 ### 🔜 Pendiente / Ideas futuras
 - Habilitar "Email link (passwordless sign-in)" en Firebase Console para que magic link funcione
 - Verificar dominio `system.cl` en Resend (actualmente envía desde `onboarding@resend.dev`)
@@ -326,6 +338,7 @@ npm run dev
 - Exportar respuestas a CSV
 - Personalización de emails (logo del cliente)
 - Webhooks cuando un cliente termina
+- Vista admin de firmas en KanbanCard (actualmente solo visible en superadmin/ExecutionDetailPage)
 
 ---
 
